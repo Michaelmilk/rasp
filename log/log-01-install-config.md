@@ -58,7 +58,7 @@
 4.  在主机上执行批处理，并开启网络共享  
     网络共享将在192.168.137.1区段开启DHCP服务
 5.  在Pi上执行`sudo /etc/init.d/networking restart`  
-    结果![][img2]
+    结果![](img/img2.png)
 6.  关闭Pi，拔掉网线。
 
 ### 用无线网络连接到Pi
@@ -145,7 +145,3 @@ Raspbian和samba用户名pi，密码Pi...Pi....u
 - - -
 
 [win32diskimager]: http://www.raspberry-projects.com/pi/pi-operating-systems/win32diskimager
-
-[img1]: img1.jpg
-
-[img2]: img2.png
