@@ -1,4 +1,4 @@
-# Log list
+# Install & Config
 
 [TOC]
 
@@ -97,6 +97,50 @@
 3. 添加samba用户：`sudo smbpasswd -a pi`，密码Pi...Pi....u
 4. 重启samba服务：`sudo service samba restart`
 5. 在主机上用用户`pi`访问即可。
+
+## 再次备份
+
+备份到本地的`F:\pi\raspbian_backup_20150228.rar`。
+
+系统启动时配置静态IP=192.168.100.100。如果没有连接网线，2分钟后将尝试wlan连接SSID=poi，WPAPSK=na*no*de*su*的无线网络，IP为DHCP分配。
+
+在PC上需要建立DHCP服务器，可以用ARP -A显示Pi的IP地址。可以用Samba访问/home/pi目录。
+
+Raspbian和samba用户名pi，密码Pi...Pi....u
+
+启动记录`dmesg`：
+
+```
+[   13.354690] Waiting up to 110 more seconds for network.
+[   15.634702] random: nonblocking pool is initialized
+[   23.354686] Waiting up to 100 more seconds for network.
+[   33.354687] Waiting up to 90 more seconds for network.
+[   43.354686] Waiting up to 80 more seconds for network.
+[   53.354684] Waiting up to 70 more seconds for network.
+[   63.354684] Waiting up to 60 more seconds for network.
+[   73.354688] Waiting up to 50 more seconds for network.
+[   83.354686] Waiting up to 40 more seconds for network.
+[   93.354688] Waiting up to 30 more seconds for network.
+[  103.354686] Waiting up to 20 more seconds for network.
+[  113.354695] Waiting up to 10 more seconds for network.
+[  123.354683] Waiting up to 0 more seconds for network.
+[  123.374745] IP-Config: Guessing netmask 255.255.255.0
+[  123.381419] IP-Config: Complete:
+[  123.385989]      device=eth0, hwaddr=b8:27:eb:6f:0f:8f, ipaddr=192.168.100.100, mask=255.255.255.0, gw=255.255.255.255
+[  123.399094]      host=192.168.100.100, domain=, nis-domain=(none)
+[  123.406569]      bootserver=255.255.255.255, rootserver=255.255.255.255, rootpath=
+[  123.440350] EXT4-fs (mmcblk0p2): mounted filesystem with ordered data mode. Opts: (null)
+[  123.451470] VFS: Mounted root (ext4 filesystem) readonly on device 179:2.
+[  123.461086] devtmpfs: mounted
+[  123.466649] Freeing unused kernel memory: 340K (c0791000 - c07e6000)
+[  125.055489] udevd[159]: starting version 175
+[  126.655373] bcm2708_spi 20204000.spi: master is unqueued, this is deprecated
+[  126.854349] bcm2708_spi 20204000.spi: SPI Controller at 0x20204000 (irq 80)
+[  128.859378] usbcore: registered new interface driver rtl8192cu
+[  131.779488] EXT4-fs (mmcblk0p2): re-mounted. Opts: (null)
+[  132.263911] EXT4-fs (mmcblk0p2): re-mounted. Opts: (null)
+[  165.700796] Adding 102396k swap on /var/swap.  Priority:-1 extents:2 across:2134012k SSFS
+```
 
 - - -
 
