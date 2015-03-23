@@ -26,9 +26,13 @@ Hub模块安装在RPi上。
 
 1. 安装RPi系统
 2. 配置RPi网络
-3. 安装Hub
-4. 配置Hub.conf配置文件
-5. 运行Hub
+
+在程序目录中：
+
+1. 配置hub.conf配置文件
+2. 运行`python hub/hub.py`
+
+如果需要测试，可以运行`python debugserver.py`
 
 ## 功能
 

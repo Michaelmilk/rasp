@@ -157,14 +157,16 @@ class MonitorThread(Thread):
         self.stop_event = Event()
 
     def run(self):
-        request_url = "http://%s:%d/gateway/sensordata" % (self.gateway_addr, self.gateway_port)
+        request_url = str("http://%s:%d/gateway/sensordata" % (self.gateway_addr, self.gateway_port))
 
         curl = pycurl.Curl()
-        curl.setopt(curl.URL, request_url)
+        curl.setopt(pycurl.URL, request_url)
 
         while not self.stop_event.wait(self.interval):
             try:
-                curl.setopt(curl.POSTFIELDS, self.sensor.get_json_dumps_data())
+                curl.setopt(pycurl.CONNECTTIMEOUT, 10)
+                curl.setopt(pycurl.TIMEOUT, 30)
+                curl.setopt(pycurl.POSTFIELDS, self.sensor.get_json_dumps_data())
                 curl.perform()
             except Exception as e:
                 logging.exception("[MonitorThread.run] exception:" + str(e))
