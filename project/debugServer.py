@@ -3,7 +3,7 @@ from gevent import monkey
 from time import time
 
 monkey.patch_all()
-app = Bottle()
+app = Bottle()  # A server printing all requests
 
 @app.get("/<url:re:.+>")
 def show(url):

@@ -6,18 +6,17 @@ from time import time
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
-LOG = logging.getLogger('[hub.sensor_stub]')
 
 
 class Sensor(BaseSensor):
 
     def __init__(self, sensor_id, sensor_desc):
-        super(Sensor, self).__init__("Stub", sensor_id, sensor_desc)
+        super(Sensor, self).__init__(sensor_type="Stub", sensor_id=sensor_id, sensor_desc=sensor_desc)
         self.count = 0
 
     def initialize(self, config=None):
-        logging.debug("[Sensor.initialize] initialized " + str(self) + " sensorid=" + self.sensor_id)
         self.is_initialized = True
+        logging.debug("[sensor_stub.Sensor.initialize] initialized " + str(self) + " sensor_id=" + self.sensor_id)
 
     def get_data(self):
         self.count += 1

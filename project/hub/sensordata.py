@@ -12,14 +12,24 @@ class SensorData(object):
 
     def __init__(self, sensor_id=None, sensor_type=None, raw_value=None, hub_id=None, timestamp=None):
         """
-        Parameter
-        ---------
+        Parameter/Object fields
+        -----------------------
         :type sensor_id: str
+        ID of source sensor.
+
         :type sensor_type: str
+        Type of source sensor.
+
         :type raw_value: float
+        Raw value from source sensor.
+
         :type hub_id: str
+        Reserved field, ID of Hub this SensorData is passing to.
+
         :type timestamp: float
+        Check time of the sensor.
         """
+
         self.sensor_id = sensor_id
         self.sensor_type = sensor_type
         self.raw_value = raw_value
@@ -28,29 +38,31 @@ class SensorData(object):
 
     def get_readable_value(self):
         """
-        Return a readable version of raw value of this data object.
-        May be override in sensor specified implements.
+        Return a readable version of raw value in this object.
+        May be overridden in sensor specified implements.
 
         Return
         ------
         :rtype: str
         readable version of raw value of this data object
         """
-        return "raw value: " + str(self.raw_value)
+        return "Raw value: " + str(self.raw_value)
 
     def get_json_dumps(self):
         """
-        Return a json string, containing:
-        sensor_id, sensor_type, raw_value, readableValue, hub_id, timestamp
+        Return a json string represents this SensorData object.
 
         Returns
         -------
-        string, json dump of a dict, containing values above
+        :rtype: str
+        json dump of a dict.
         """
         from json import dumps
-        return dumps({"sensor_id": self.sensor_id,
-                      "sensor_type": self.sensor_type,
-                      "raw_value": self.raw_value,
-                      "readable_value": self.get_readable_value(),
-                      "hub_id": self.hub_id,
-                      "timestamp": self.timestamp})
+        return dumps({
+            "sensor_id": self.sensor_id,
+            "sensor_type": self.sensor_type,
+            "raw_value": self.raw_value,
+            "hub_id": self.hub_id,
+            "timestamp": self.timestamp,
+            "readable_value": self.get_readable_value()
+        })
