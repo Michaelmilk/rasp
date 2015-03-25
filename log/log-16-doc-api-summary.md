@@ -4,7 +4,15 @@
 
 ## Modules
 
-Client, DataServer, Gateway, Hub, Sensor
+Client
+
+DataServer(port 8053)
+
+Gateway(port 8052)
+
+Hub(port 8051)
+
+Sensor
 
 ### Client
 

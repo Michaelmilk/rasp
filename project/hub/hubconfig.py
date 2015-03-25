@@ -1,4 +1,5 @@
 # -*- coding: utf8 -*-
+
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -54,7 +55,7 @@ class HubConfig(object):
         """
         Return parsed json string of this config
 
-        Parameter
+        Return
         ---------
         :rtype: str
         """

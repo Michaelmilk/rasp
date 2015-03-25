@@ -1,3 +1,5 @@
+# -*- coding: utf8 -*-
+
 from bottle import Bottle, request
 from gevent import monkey
 from time import time
