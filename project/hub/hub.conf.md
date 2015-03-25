@@ -7,6 +7,12 @@
     
     # Port of Gateway device
     "gateway_port": 6001,
+
+    # ID of hub
+    "hub_id": "str",
+
+    # Some description of hub
+    "hub_desc": "something",
     
     # Host of Hub device
     "hub_host": "0.0.0.0",
@@ -23,18 +29,22 @@
             # Unique ID of sensor
             "id": "stub001",
             
-            # Desciption of sensor
+            # Description of sensor
             "desc": "test sensor 1",
             
             # Time interval between two sampling on sensor, in seconds
-            "interval": 7.5
+            "interval": 7.5,
+
+            # Initial config
+            "config": {}
         },
         # Add more sensors!
         {
             "type":"stub",
             "id": "stub002",
             "desc": "test sensor 2",
-            "interval": 10.0
+            "interval": 10.0,
+            "config": {}
         }
     ]
 }

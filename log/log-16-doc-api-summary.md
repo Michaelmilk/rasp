@@ -182,11 +182,13 @@ GatewayConfig:
     # POST payload is a json string containing proper config.
     # Response: 200 json
     #           New config of that device.
+    # Error:    500 json
     POST hub/hubconfig/(hub_id)
     
     # Get config of a device.
     # Response: 200 json
     #           Current config of that device.
+    # Error:    500 json
     GET  hub/hubconfig/(hub_id)
 ```
 
@@ -214,10 +216,11 @@ HubConfig:
     "gateway_port": int,
     "sensors": [
         {
-            "sensor_type": str,
-            "sensor_id": str,
-            "sensor_desc": str,
-            "sensor_config": {
+            "type": str,
+            "id": str,
+            "desc": str,
+            "interval": float,
+            "config": {
                 ...
             }
         },

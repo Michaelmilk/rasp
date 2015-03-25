@@ -12,7 +12,7 @@ class BaseSensor(object):
     See sensor_stub.py as example.
     """
 
-    def __init__(self, sensor_type, sensor_id, sensor_desc):
+    def __init__(self, sensor_type, sensor_id, sensor_desc, sensor_config):
         """
         Parameter/Fields
         ----------------
@@ -24,6 +24,9 @@ class BaseSensor(object):
 
         :type sensor_desc: str
         Description of the sensor.
+
+        :type sensor_config: dict
+        Initial config of the sensor
         """
         self.sensor_type = sensor_type
         """ :type: str """
@@ -34,22 +37,23 @@ class BaseSensor(object):
         self.sensor_desc = sensor_desc
         """ :type: str """
 
+        self.sensor_config = sensor_config
+        """ :type: dict """
+
         self.last_data = None            # Last successfully gathered data.
         """ :type: SensorData """
 
         self.is_initialized = False      # Flag, indicating if the sensor is initialized.
         """ :type: bool"""               # Call initialize() and close() to set this.
 
-
-
-    def initialize(self, config=None):
+    def initialize(self):
         """
-        Initialize the sensor device.
+        Initialize the sensor device USING self.sensor_config
         SHOULD BE OVERRIDDEN.
 
         Parameter
         ---------
-        :type config:
+        :type config: dict
         device specific config for initialization
         """
         self.is_initialized = True

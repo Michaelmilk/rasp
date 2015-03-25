@@ -10,13 +10,13 @@ logging.basicConfig(level=logging.DEBUG)
 
 class Sensor(BaseSensor):
 
-    def __init__(self, sensor_id, sensor_desc):
-        super(Sensor, self).__init__(sensor_type="Stub", sensor_id=sensor_id, sensor_desc=sensor_desc)
+    def __init__(self, sensor_id, sensor_desc, sensor_config):
+        super(Sensor, self).__init__("Stub", sensor_id, sensor_desc, sensor_config)
         self.count = 0
 
-    def initialize(self, config=None):
+    def initialize(self):
         self.is_initialized = True
-        logging.debug("[sensor_stub.Sensor.initialize] initialized " + str(self) + " sensor_id=" + self.sensor_id)
+        logging.debug("[sensor_stub.Sensor.initialize] initialized " + str(self) + " sensor_id=" + self.sensor_id + " config=" + str(self.sensor_config))
 
     def get_data(self):
         self.count += 1

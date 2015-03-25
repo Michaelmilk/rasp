@@ -93,7 +93,9 @@ class Hub(object):
                 sensor_module = import_module("sensor_" + sensor_config["type"])
 
                 # Prepare sensor and monitor thread
-                sensor = sensor_module.Sensor(sensor_config["id"], sensor_config["desc"])
+                sensor = sensor_module.Sensor(sensor_config["id"], sensor_config["desc"], sensor_config["config"])
+                """ :type: baseSensor.BaseSensor """
+
                 thread = MonitorThread(sensor, self.config.gateway_addr, self.config.gateway_port, sensor_config["interval"])
                 self.thread_sensor_tuples.append((thread, sensor))
 
