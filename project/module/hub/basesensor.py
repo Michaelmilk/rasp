@@ -1,7 +1,8 @@
 # -*- coding: utf8 -*-
 
-from sensordata import SensorData
 import logging
+from module.hub.sensordata import SensorData
+
 
 logging.basicConfig(level=logging.DEBUG)
 

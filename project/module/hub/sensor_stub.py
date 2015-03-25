@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from basesensor import BaseSensor
-from sensordata import SensorData
 from time import time
 import logging
+from basesensor import BaseSensor
+from module.hub.sensordata import SensorData
+
 
 logging.basicConfig(level=logging.DEBUG)
 

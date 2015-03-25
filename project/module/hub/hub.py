@@ -2,10 +2,10 @@
 
 from importlib import import_module
 from threading import Thread, Event
-from hubserver import HubServer
 import pycurl
-import hubconfig
 import logging
+from module.hub.hubserver import HubServer
+import hubconfig
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -177,6 +177,9 @@ class MonitorThread(Thread):
         self.stop_event.set()
 
 
-if __name__ == "__main__":
-    default_config = hubconfig.parse_from_file("hub.conf")  # Default config filename
-    hub = Hub(default_config)                               # Creating Hub starts HubServer as well
+def run_hub():
+    """
+    :rtype:Hub
+    """
+    default_config = hubconfig.parse_from_file("config/hub.conf")  # Default config filename
+    return Hub(default_config)                                     # Creating Hub starts HubServer as well

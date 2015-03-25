@@ -1,8 +1,9 @@
 # -*- coding: utf8 -*-
 
-from bottle import Bottle, request, HTTPResponse
-import hubconfig
 import logging
+from bottle import Bottle, request, HTTPResponse
+from module.hub import hubconfig
+
 
 logging.basicConfig(level=logging.DEBUG)
 
