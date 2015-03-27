@@ -4,58 +4,78 @@
 
 ## Modules
 
-Client
+1. Client
+2. DataServer(port 8053)
+3. Gateway(port 8052)
+4. Hub(port 8051)
+5. Sensor
 
-DataServer(port 8053)
+## Client
 
-Gateway(port 8052)
+TDB
 
-Hub(port 8051)
+## DataServer
 
-Sensor
+### API - Accept from Client:
 
-### Client
+#### `GET dataserver/notify`
 
-### DataServer
+> HTTP 1.1 keep-alive for pushing sensor data and events.
+> Response: 200 json, data and events
 
-#### API - Accept
+#### `GET dataserver/project`
 
-```
-# From Client:
-    
-    # HTTP 1.1 keep-alive for pushing sensor data and events.
-    # Response: 200 json
-    #           Data and events
-    GET  dataserver/notify
-    
-    # Configure a device.
-    # POST payload is a json string containing proper config.
-    # Response: 200 json
-    #           New config of that device.
-    POST dataserver/dataserverconfig/(dataserver_id)
-    POST dataserver/gatewayconfig/(dataserver_id)/(gateway_id)
-    POST dataserver/hubconfig/(dataserver_id)/(gateway_id)/(hub_id)
-    
-    # Get config of a device.
-    # Response: 200 json
-    #           Current config of that device.
-    GET  dataserver/dataserverconfig/(dataserver_id)
-    GET  dataserver/gatewayconfig/(dataserver_id)/(gateway_id)
-    GET  dataserver/hubconfig/(dataserver_id)/(gateway_id)/(hub_id)
+> Get current project info.
+> Response: 200 json, project info. TODO
 
-    # Get current project info.
-    # Response: 200 json
-    #           Project info. TODO
-    GET  dataserver/project
+- - -
 
-# From Gateway
+#### `POST dataserver/dataserverconfig/(dataserver_id)`
 
-    # Push data to DataServer from Gateway.
-    # Response: 200 empty
-    POST dataserver/sensordata
-```
+> Configure a device.
+> Payload is a json string containing proper config.
+> Response: 200 json
 
-#### API - Send
+#### `POST dataserver/gatewayconfig/(dataserver_id)/(gateway_id)`
+
+> Configure a device.
+> Payload is a json string containing proper config.
+> Response: 200 json
+
+#### `POST dataserver/hubconfig/(dataserver_id)/(gateway_id)/(hub_id)`
+
+> Configure a device.
+> Payload is a json string containing proper config.
+> Response: 200 json
+
+- - -
+
+#### `GET dataserver/dataserverconfig/(dataserver_id)`
+
+#### `GET dataserver/gatewayconfig/(dataserver_id)/(gateway_id)`
+
+#### `GET dataserver/hubconfig/(dataserver_id)/(gateway_id)/(hub_id)`
+
+### API - Accept from Gateway
+
+#### `POST dataserver/sensordata`
+
+> Push data to DataServer from Gateway.
+> Response: 200 empty
+
+### API - Send to Gateway
+
+#### `POST gateway/gatewayconfig/(gateway_id)`
+
+> Configure a device.
+> POST payload is a json string containing proper config.
+> Response: 200 json, new config of that device.
+
+#### `POST gateway/hubconfig/(gateway_id)/(hub_id)`
+
+> Configure a device.
+> POST payload is a json string containing proper config.
+> Response: 200 json, new config of that device.
 
 ```
 # To Gateway:
@@ -74,7 +94,7 @@ Sensor
     GET  gateway/hubconfig/(gateway_id)/(hub_id)
 ```
 
-#### Config
+### Config
 
 ```
 DataServerConfig:
@@ -96,57 +116,72 @@ DataServerConfig:
 }
 ```
 
-### Gateway
+## Gateway
 
-#### API - Accept
+### API - Accept from DataServer
 
-```
-# From DataServer:
-    
-    # Configure a device.
-    # POST payload is a json string containing proper config.
-    # Response: 200 json
-    #           New config of that device.
-    POST gateway/gatewayconfig/(gateway_id)
-    POST gateway/hubconfig/(gateway_id)/(hub_id)
-    
-    # Get config of a device.
-    # Response: 200 json
-    #           Current config of that device.
-    GET  gateway/gatewayconfig/(gateway_id)
-    GET  gateway/hubconfig/(gateway_id)/(hub_id)
+#### `POST gateway/gatewayconfig/(gateway_id)`
 
-# From Hub
+> Configure a device.
+> POST payload is a json string containing proper config.
+> Response: 200 json, new config of that device.
 
-    # Push data to DataServer from Gateway.
-    # Response: 200 empty
-    POST gateway/sensordata
-```
+**LOCK** self.gateway
 
-#### API - Send
+#### `POST gateway/hubconfig/(gateway_id)/(hub_id)`
 
-```
-# To DataServer:
+> Configure a device.
+> POST payload is a json string containing proper config.
+> Response: 200 json, new config of that device.
 
-    # Push sensor data.
-    # Response: 200 empty
-    POST dataserver/sensordata
+**LOCK** self.gateway
 
-# To Hub:
+#### `GET gateway/gatewayconfig/(gateway_id)`
 
-    # Configure a device.
-    # POST payload is a json string containing proper config.
-    # Response: 200 json
-    #           New config of that device.
-    POST hub/hubconfig/(hub_id)
+> Get config of a device.
+> Response: 200 json, current config of that device.
 
-    # Get config of a device.
-    # Response: 200 json
-    #           Current config of that device.
-    GET  hub/hubconfig/(hub_id)
-```
+**LOCK** self.gateway
 
-#### Config
+#### `GET gateway/hubconfig/(gateway_id)/(hub_id)`
+
+> Get config of a device.
+> Response: 200 json, current config of that device.
+
+**LOCK** self.gateway
+
+### API - Accept from Hub
+
+#### `POST gateway/sensordata`
+
+> Push data to DataServer from Gateway.
+> Response: 200 empty
+
+### API - Send to DataServer
+
+#### `POST dataserver/sensordata`
+
+> Push sensor data.
+> Response: 200 empty
+
+### API - Send to Hub
+
+#### `GET hub/hubconfig/(hub_id)`
+
+> Get config of a device.
+> Response: 200 json, current config of that device.
+
+Called in processing `GET gateway/hubconfig/(gateway_id)/(hub_id)`
+
+#### `POST hub/hubconfig/(hub_id)`
+
+> Configure a device.
+> POST payload is a json string containing proper config.
+> Response: 200 json, new config of that device.
+
+Called in processing `POST gateway/hubconfig/(gateway_id)/(hub_id)`
+
+### Config
 
 ```
 GatewayConfig:
@@ -179,38 +214,43 @@ GatewayConfig:
 }
 ```
 
-### Hub
-
-#### API - Accept
+## Hub
 
 ```
-# From Gateway:
-    
-    # Configure a device.
-    # POST payload is a json string containing proper config.
-    # Response: 200 json
-    #           New config of that device.
-    # Error:    500 json
-    POST hub/hubconfig/(hub_id)
-    
-    # Get config of a device.
-    # Response: 200 json
-    #           Current config of that device.
-    # Error:    500 json
-    GET  hub/hubconfig/(hub_id)
+Members
+
+HubServer
+    hub
+    bottle
 ```
 
-#### API - Send
+### API - Accept from Gateway
 
-```
-# To Gateway:
+#### `POST hub/hubconfig/(hub_id)`
 
-    # Push sensor data.
-    # Response: 200 empty
-    POST gateway/sensordata
-```
+> Configure a device.
+> POST payload is a json string containing proper config.
+> Response: 200 json, new config of that device.
+> Error:    500 json
 
-#### Config
+**LOCK** self.hub
+
+#### `GET  hub/hubconfig/(hub_id)`
+
+> Get config of a device.
+> Response: 200 json, current config of that device.
+> Error:    500 json
+
+**LOCK** self.hub
+
+### API - Send to Gateway
+
+#### `POST gateway/sensordata`
+
+> Push sensor data.
+> Response: 200 empty
+
+### Config
 
 ```
 HubConfig:

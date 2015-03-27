@@ -40,7 +40,8 @@ class HubServer(object):
         """
         self.hub_lock.acquire()
         try:
-            response = self.update_hub_config(hub_id, request.body.read())
+            self.update_hub_config(hub_id, request.body.read())
+            response = self.get_hub_config(hub_id)
         except ServerError as e:
             from json import dumps
             response = HTTPResponse(status=500, body=dumps({
@@ -73,7 +74,6 @@ class HubServer(object):
         """
         :type hub_id: basestring
         """
-
         # 1. Check hub_id
         if (self.hub is None) or (hub_id != self.hub.config.hub_id):
             raise ServerError("Cannot find hub with hub_id='%s'." % hub_id)
@@ -97,7 +97,6 @@ class HubServer(object):
         """
         :type hub_id: basestring
         """
-
         # 1. Check hub_id
         if (self.hub is None) or (hub_id != self.hub.config.hub_id):
             raise ServerError("Cannot find hub with hub_id='%s'." % hub_id)
