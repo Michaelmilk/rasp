@@ -1,12 +1,10 @@
 # -*- coding: utf8 -*-
 
-from importlib import import_module
-from threading import Thread, Event
-import pycurl
 import logging
+from importlib import import_module
+from module.hub.monitorthread import MonitorThread
 from module.hub.hubserver import HubServer
-import hubconfig
-
+from module.hub.hubconfig import HubConfig
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -14,123 +12,105 @@ logging.basicConfig(level=logging.DEBUG)
 class Hub(object):
     """
     Hub.
-    Connect multiple sensors,
-    read initial config from file,
-    read value from sensors,
-    connect to gateway,
-    receive new config from gateway... etc
     """
 
     def __init__(self, hub_config):
         """
-        Hub has a HubServer in instance.
+        Hub has a HubServer in it.
         This method will run HubServer using params in hub_config directly.
-
-        Parameter
-        ---------
-        :type hub_config:hubconfig.HubConfig
+        :type hub_config:HubConfig
         """
+
         logging.debug("[Hub.__init__] hub_config=" + str(hub_config))
 
-        self.old_config = None                          # Save old config when loading new one.
-        """ :type: hubconfig.HubConfig """              # Will be rolled back in case that new one failed to load.
+        self.old_config = None                              # Save old config when loading new one.
+        """ :type: HubConfig """                            # Will be rolled back in case that new one failed to load.
 
-        self.config = None                              # Current hub config.
-        """ :type: hubconfig.HubConfig """
+        self.config = None                                  # Current hub config.
+        """ :type: HubConfig """
 
-        self.thread_sensor_tuples = []                  # Current running sensors and its monitor thread(MonitorThread)
-        """ :type: list of (MonitorThread, Sensor) """  # TODO wrap Sensor in MonitorThread
+        self.threads = []                                   # Running monitor threads(MonitorThread)
+        """ :type: list of MonitorThread """
 
         self.apply_config(hub_config)
 
-        self.hub_server = HubServer(self, self.config.hub_host, self.config.hub_port)  # A bottle HTTP server.
-        """ :type: HubServer """                                                       # Receive config from gateway.
+        self.hub_server = HubServer(self)                   # A bottle HTTP server.
+        """ :type: HubServer """                            # Receive config from gateway.
 
     def apply_config(self, hub_config, load_old_config=False):
         """
         Update config of hub.
-        If exception happens in initializing new sensors,
-        Old config will be reloaded.
-        If exception happens while rolling back to old config... Do nothing.
+        If exception happens in initializing new sensors, old config will be reloaded.
+        If exception happens while rolling back to old config, do nothing.
 
-        Parameter
-        ---------
-        :type hub_config: hubconfig.HubConfig
+        :type hub_config: HubConfig
         New config to be load
 
         :type load_old_config: bool
-        Should not set when called.
-        Used in case that failed to load new config to prevent infinite loop.
+        Should not set when called, used in case failed to load new config to prevent infinite loop.
         """
         logging.debug("[Hub.apply_config] hub_config=" + str(hub_config) + "load_old_config=" + str(load_old_config))
 
-        # Type check
-        if hub_config is None:
-            return
-
-        if not isinstance(hub_config, hubconfig.HubConfig):
+        # 1. Some type check
+        if (hub_config is None) or (not isinstance(hub_config, HubConfig)):
             raise TypeError("%s is not a HubConfig instance" % str(hub_config))
 
-        # 1. Replace config field
+        # 2. Backup config
         self.old_config = self.config
 
-        # 2. If new config has a different "hub_host" or "hub_port" from old one,
-        # TODO run a shell script to restart whole program using new config
-        # TODO because bottle cannot stop itself
+        # 3. If new config has a different "hub_host" or "hub_port" from old one,
+        # TODO run a shell script to restart whole program using new config because bottle cannot stop itself
         if (self.old_config is not None) and ((hub_config.hub_port != self.old_config.hub_port) or (hub_config.hub_host != self.old_config.hub_host)):
             self.restart_whole_server()
 
-        # 3. Reset server, stopping sensors and monitor threads
+        # 4. Reset server, stopping sensors and monitor threads
         self.reset()
 
-        # 4. Start new sensor and monitor threads
+        # 5. Start new sensor and monitor threads
         try:
             self.config = hub_config
             for sensor_config in self.config.sensors:
 
-                # Import sensor driver module by its "type".
-                # Rule: module filename is "sensor_[type].py"
-                sensor_module = import_module("sensor_" + sensor_config["type"])
+                # Import sensor driver module by its type. Rule: module filename is "sensor_[type].py"
+                sensor_module = import_module("module.hub.sensor_" + sensor_config["type"])
 
-                # Prepare sensor and monitor thread
+                # Prepare sensor monitor thread
                 sensor = sensor_module.Sensor(sensor_config["id"], sensor_config["desc"], sensor_config["config"])
-                """ :type: baseSensor.BaseSensor """
-
                 thread = MonitorThread(sensor, self.config.gateway_addr, self.config.gateway_port, sensor_config["interval"])
-                self.thread_sensor_tuples.append((thread, sensor))
 
-                # Start sensor and monitor thread
-                sensor.initialize()
+                # Start sensor monitor thread
                 thread.start()
+                self.threads.append(thread)
                 logging.debug("[Hub.apply_config] A sensor and its thread is started. sensorid=" + sensor.sensor_id + " thread=" + str(thread))
 
         except Exception as e:
             if load_old_config is not None:
                 # Rolling back to old config
-                logging.debug("[Hub.apply_config] Error occured while loading new config, rolling to old one")
+                logging.warn("[Hub.apply_config] Error occured while loading new config, rolling to old one")
+                logging.warn("                   exception = " + str(e))
                 rollback_config = self.old_config
                 self.reset()
                 self.apply_config(rollback_config, True)
             else:
                 # Rolling back failed, raise exception
                 # TODO consider load default config from .conf file?
-                logging.debug("[Hub.apply_config] Error occured while rolling to old one, resetting hub")
+                logging.warn("[Hub.apply_config] Error occured while rolling to old one, resetting hub")
+                logging.warn("                   exception = " + str(e))
                 self.reset()
                 raise e
 
     def reset(self):
         """
-        Clear config, clear thread_sensor_tuples, stop all sensors and monitor threads
+        Clear config, clear threads, stop all sensors and monitor threads
         """
-        logging.debug("[Hub.reset] resetting, sensor thread count: " + str(len(self.thread_sensor_tuples)))
+        logging.debug("[Hub.reset] resetting, sensor thread count: " + str(len(self.threads)))
 
         # stop all sensors & their monitor threads
-        for (thread, sensor) in self.thread_sensor_tuples:
+        for thread in self.threads:
             thread.stop()
-            sensor.close()
-            logging.debug("[Hub.reset] A sensor and its thread is stopped. sensorid=" + sensor.sensor_id + " thread=" + str(thread))
+            logging.debug("[Hub.reset] MonitorThread" + str(thread) + " stopped. sensor_id=" + thread.sensor.sensor_id)
 
-        self.thread_sensor_tuples = []
+        self.threads = []
         self.config = None
 
     def restart_whole_server(self):
@@ -141,45 +121,10 @@ class Hub(object):
         logging.warn("[Hub.reload_whole_server] not implemented yet!")
         pass
 
-
-class MonitorThread(Thread):
-    def __init__(self, sensor, gateway_addr, gateway_port, interval):
-        """
-        :type sensor: BaseSensor
-        :type gateway_addr: str
-        :type gateway_port: int
-        :type interval float
-        """
-
-        Thread.__init__(self)
-        self.sensor = sensor
-        self.gateway_addr = gateway_addr
-        self.gateway_port = gateway_port
-        self.interval = interval
-        self.stop_event = Event()
-
-    def run(self):
-        request_url = str("http://%s:%d/gateway/sensordata" % (self.gateway_addr, self.gateway_port))
-
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, request_url)
-
-        while not self.stop_event.wait(self.interval):
-            try:
-                curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-                curl.setopt(pycurl.TIMEOUT, 30)
-                curl.setopt(pycurl.POSTFIELDS, self.sensor.get_json_dumps_data())
-                curl.perform()
-            except Exception as e:
-                logging.exception("[MonitorThread.run] exception:" + str(e))
-
-    def stop(self):
-        self.stop_event.set()
-
-
 def run_hub():
     """
     :rtype:Hub
     """
-    default_config = hubconfig.parse_from_file("config/hub.conf")  # Default config filename
+    from hubconfig import parse_from_file
+    default_config = parse_from_file("config/hub.conf")            # Default config filename
     return Hub(default_config)                                     # Creating Hub starts HubServer as well

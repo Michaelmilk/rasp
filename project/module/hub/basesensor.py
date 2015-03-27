@@ -27,7 +27,7 @@ class BaseSensor(object):
         Description of the sensor.
 
         :type sensor_config: dict
-        Initial config of the sensor
+        Initial config to start the sensor
         """
         self.sensor_type = sensor_type
         """ :type: str """
@@ -51,11 +51,6 @@ class BaseSensor(object):
         """
         Initialize the sensor device USING self.sensor_config
         SHOULD BE OVERRIDDEN.
-
-        Parameter
-        ---------
-        :type config: dict
-        device specific config for initialization
         """
         self.is_initialized = True
 
