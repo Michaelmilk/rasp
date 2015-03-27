@@ -33,15 +33,15 @@ Sensor
     # Response: 200 json
     #           New config of that device.
     POST dataserver/dataserverconfig/(dataserver_id)
-    POST dataserver/gatewayconfig/(gateway_id)
-    POST dataserver/hubconfig/(hub_id)
+    POST dataserver/gatewayconfig/(dataserver_id)/(gateway_id)
+    POST dataserver/hubconfig/(dataserver_id)/(gateway_id)/(hub_id)
     
     # Get config of a device.
     # Response: 200 json
     #           Current config of that device.
     GET  dataserver/dataserverconfig/(dataserver_id)
-    GET  dataserver/gatewayconfig/(gateway_id)
-    GET  dataserver/hubconfig/(hub_id)
+    GET  dataserver/gatewayconfig/(dataserver_id)/(gateway_id)
+    GET  dataserver/hubconfig/(dataserver_id)/(gateway_id)/(hub_id)
 
     # Get current project info.
     # Response: 200 json
@@ -65,13 +65,13 @@ Sensor
     # Response: 200 json
     #           New config of that device.
     POST gateway/gatewayconfig/(gateway_id)
-    POST gateway/hubconfig/(hub_id)
+    POST gateway/hubconfig/(gateway_id)/(hub_id)
 
     # Get config of a device.
     # Response: 200 json
     #           Current config of that device.
     GET  gateway/gatewayconfig/(gateway_id)
-    GET  gateway/hubconfig/(hub_id)
+    GET  gateway/hubconfig/(gateway_id)/(hub_id)
 ```
 
 #### Config
@@ -108,13 +108,13 @@ DataServerConfig:
     # Response: 200 json
     #           New config of that device.
     POST gateway/gatewayconfig/(gateway_id)
-    POST gateway/hubconfig/(hub_id)
+    POST gateway/hubconfig/(gateway_id)/(hub_id)
     
     # Get config of a device.
     # Response: 200 json
     #           Current config of that device.
     GET  gateway/gatewayconfig/(gateway_id)
-    GET  gateway/hubconfig/(hub_id)
+    GET  gateway/hubconfig/(gateway_id)/(hub_id)
 
 # From Hub
 

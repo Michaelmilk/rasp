@@ -57,7 +57,7 @@ class HubServer(object):
                 "error": "Exception on parsing json, no change applied to hub.",
                 "exception": str(e)
             })
-            logging.info("[HubApp._hub_config] exception on parsing json, do nothing. e=" + str(e))
+            logging.info("[HubServer.post_hub_config] exception on parsing json, do nothing. e=" + str(e))
             return HTTPResponse(status=500, body=error_str)
 
         try:
