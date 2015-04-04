@@ -4,9 +4,9 @@ import logging
 import pycurl
 
 from gatewayserver import GatewayServer
-from module.gateway import gatewayconfig
+from module.gateway.gatewayconfig import GatewayConfig
 from module.hub.sensordata import SensorData
-
+from module.exception import ServerError
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -14,29 +14,23 @@ logging.basicConfig(level=logging.DEBUG)
 class Gateway(object):
     """
     Gateway.
-    Connect multiple hubs,
-    read config from file,
-    receive value from hubs,
-    connect to dataserver,
-    receive new config from gateway... etc
+    This is where SensorData is filtered.
     """
 
     def __init__(self, gateway_config):
         """
         Gateway has a HubServer in instance.
         This method will run GatewayServer using params in gateway_config directly.
-
-        Parameter
-        ---------
         :type gateway_config:gatewayconfig.GatewayConfig
         """
+
         logging.debug("[Gateway.__init__] gateway_config=" + str(gateway_config))
 
         self.old_config = None
-        """ :type: gatewayconfig.GatewayConfig """
+        """ :type: GatewayConfig """
 
         self.config = None
-        """ :type: gatewayconfig.GatewayConfig """
+        """ :type: GatewayConfig """
 
         self.apply_config(gateway_config)
 
@@ -50,30 +44,23 @@ class Gateway(object):
         """
         Update config of gateway.
 
-        Parameter
-        ---------
         :type gateway_config: GatewayConfig
         New config to be load
 
         :type load_old_config: bool
-        Should not set when called.
-        Used in case that failed to load new config to prevent infinite loop.
+        Should not set when called, used in case failed to load new config to prevent infinite loop.
         """
         logging.debug("[Gateway.apple_config] gateway_config=" + str(gateway_config) + "load_old_config=" + str(load_old_config))
 
-        # Type check
-        if gateway_config is None:
-            return
-
-        if not isinstance(gateway_config, gatewayconfig.GatewayConfig):
+        # 1. Some type check
+        if not isinstance(gateway_config, GatewayConfig):
             raise TypeError("%s is not a GatewayConfig instance" % str(gateway_config))
 
-        # 1. Replace config field
+        # 2. Replace config field
         self.old_config = self.config
 
-        # 2. If new config has a different "gateway_host" or "gateway_port" from old one,
-        # TODO run a shell script to start whole program using new config
-        # TODO because bottle cannot stop itself
+        # 3. If new config has a different "gateway_host" or "gateway_port" from old one,
+        # TODO run a shell script to start whole program using new config, because bottle cannot stop itself
         if (self.old_config is not None) and ((gateway_config.gateway_port != self.old_config.gateway_port) or (gateway_config.gateway_host != self.old_config.gateway_host)):
             self.restart_whole_server()
 
@@ -102,17 +89,16 @@ class Gateway(object):
         Filter SensorData using self.filter.
         If SensorData failed to pass any filter applied to it, ignore it.
         Otherwise, send it to DataServer.
-
-        Parameter
-        ---------
         :type sensor_data: SensorData
         """
 
+        # 1. Some type check
         if not isinstance(sensor_data, SensorData):
             raise TypeError("sensor_data: %s is not a SensorData instance" % str(sensor_data))
 
         is_dropped = False
 
+        # 2. Check value
         for data_filter in self.config.filters:
             # Check "apply_on_sensor_type"
             if (data_filter["apply_on_sensor_type"] != "*") and (data_filter["apply_on_sensor_type"] != sensor_data.sensor_type):
@@ -130,6 +116,7 @@ class Gateway(object):
                 is_dropped = True
                 break
 
+        # 3. If not dropped, send request
         if not is_dropped:
             # Send http request to dataserver
             request_url = str("http://%s:%d/dataserver/sensordata" % (self.config.dataserver_addr, self.config.dataserver_port))
@@ -143,11 +130,13 @@ class Gateway(object):
                 self.curl.perform()
             except Exception as e:
                 logging.exception("[Gateway.filter_and_send_sensor_data] exception:" + str(e))
+                raise ServerError("Error on sending sensor data to data server.", e)
 
 
 def run_gateway():
     """
     :rtype: Gateway
     """
-    default_config = gatewayconfig.parse_from_file("config/gateway.conf")
+    from gatewayconfig import parse_from_file
+    default_config = parse_from_file("config/gateway.conf")
     return Gateway(default_config)

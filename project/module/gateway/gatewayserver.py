@@ -1,42 +1,37 @@
 # -*- coding: utf8 -*-
 
-from bottle import Bottle, request, HTTPResponse
-from gevent import monkey
-from module.gateway import gatewayconfig
 import logging
+from gevent import monkey
+from gevent.lock import BoundedSemaphore
+from bottle import Bottle, request, HTTPResponse
+from module.exception import ServerError
+from module.gateway.gatewayconfig import parse_from_string as parse_gateway_from_string
 
-logging.basicConfig(level=logging.DEBUG)
-
-# Make gevent usable
 monkey.patch_all()
+logging.basicConfig(level=logging.DEBUG)
 
 
 class GatewayServer(object):
-    def __init__(self, gateway, host, port):
+    def __init__(self, gateway):
         """
-        :type gateway: gateway.Gateway
-        :type host: str
-        :type port: int
+        :type gateway: module.gateway.gateway.Gateway
         """
         self.gateway = gateway
-        """ :type: gateway.Gateway """
+
+        self.gateway_lock = BoundedSemaphore(1)  # Lock of the Gateway instance
+        """ :type: BoundedSemaphore """
 
         self.bottle = Bottle()
         """ :type: Bottle """
 
-        self.host = host
-        """ :type: str """
-
-        self.port = port
-        """ :type: int """
-
         self.route()
         logging.debug("[GatewayServer.__init__] initialized, host=" + self.host + " port=" + str(self.port))
-        self.bottle.run(host=self.host, port=self.port, server="gevent")
+        self.bottle.run(host=self.gateway.config.gateway_host, port=self.gateway.config.gateway_port, server="gevent")
 
     def route(self):
         self.bottle.route("/gateway/gatewayconfig/<gateway_id>", method="POST", callback=self.post_gateway_config)
         self.bottle.route("/gateway/hubconfig/<gateway_id>/<hub_id>", method="POST", callback=self.post_hub_config)
+
         self.bottle.route("/gateway/gatewayconfig/<gateway_id>", method="GET", callback=self.get_gateway_config)
         self.bottle.route("/gateway/hubconfig/<gateway_id>/<hub_id>", method="GET", callback=self.get_hub_config)
 

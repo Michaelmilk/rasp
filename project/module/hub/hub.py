@@ -52,7 +52,7 @@ class Hub(object):
         logging.debug("[Hub.apply_config] hub_config=" + str(hub_config) + "load_old_config=" + str(load_old_config))
 
         # 1. Some type check
-        if (hub_config is None) or (not isinstance(hub_config, HubConfig)):
+        if not isinstance(hub_config, HubConfig):
             raise TypeError("%s is not a HubConfig instance" % str(hub_config))
 
         # 2. Backup config
@@ -121,9 +121,10 @@ class Hub(object):
         logging.warn("[Hub.reload_whole_server] not implemented yet!")
         pass
 
+
 def run_hub():
     """
-    :rtype:Hub
+    :rtype: Hub
     """
     from hubconfig import parse_from_file
     default_config = parse_from_file("config/hub.conf")            # Default config filename
