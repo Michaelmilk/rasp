@@ -1,16 +1,35 @@
 # -*- coding: utf-8 -*-
 
+"""本Python模块是一个传感器驱动，用于TLC1549 A/D转换器。"""
+
+__author__ = "tgmerge"
+
+
 from time import time
 import logging
+
 from basesensor import BaseSensor
-from module.hub.sensordata import SensorData
-import spidev
+from pinic.sensor.sensordata import SensorData
+
+
+# 为Windows下sphinx的兼容性，忽略Windows上导入spidev的错误
+try:
+    import spidev
+except ImportError as e:
+    from sys import platform
+    if platform == "win32":
+        spidev = None
+    else:
+        raise e
 
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 class Sensor(BaseSensor):
+    """
+    用于TLC1549的传感器驱动类。值的范围是0-1024。
+    """
 
     def __init__(self, sensor_id, sensor_desc, sensor_config):
         super(Sensor, self).__init__("tlc1549", sensor_id, sensor_desc, sensor_config)

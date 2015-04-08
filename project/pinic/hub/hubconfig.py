@@ -1,5 +1,10 @@
 # -*- coding: utf8 -*-
 
+"""本Python模块含有Hub配置类，和从文件、字符串解析Hub配置对象的方法。"""
+
+__author__ = "tgmerge"
+
+
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -7,22 +12,16 @@ logging.basicConfig(level=logging.DEBUG)
 
 class HubConfig(object):
     """
-    Config of a Hub.
+    封装Hub的配置。配置项参见config/hub.conf。
 
-    Config item
-    -----------
-    see hub.conf.md file
-    see parse_from_file() and parse_from_string()
+    任何情况下不应该使用HubConfig()方法创建HubConfig对象，
+    而应该使用parse_from_string()和parse_from_file()从字符串和文件解析HubConfig。
     """
 
-    def __init__(self, json_str, config_dict):
+    def __init__(self, config_dict):
         """
-        :type json_str: basestring
-        :type config_dict: dict
-        See hub.conf.md file.
+        :param dict config_dict: 初始化用字典
         """
-        self.json_str = json_str
-        """ :type: basestring """
 
         self.gateway_addr = config_dict["gateway_addr"]
         """ :type: basestring """
@@ -47,28 +46,30 @@ class HubConfig(object):
 
     def get_json_string(self):
         """
-        Return parsed json string of this config
+        获取代表本配置对象的Json字符串。
 
-        Return
-        ---------
         :rtype: str
         """
-        return self.json_str
+        from json import dumps
+
+        return dumps({
+            "gateway_addr": self.gateway_addr,
+            "gateway_port": self.gateway_port,
+            "hub_id": self.hub_id,
+            "hub_desc": self.hub_desc,
+            "hub_host": self.hub_host,
+            "hub_port": self.hub_port,
+            "sensors": self.sensors
+        })
 
 
 def parse_from_string(config_json):
     """
-    Return a HubConfig, which is parsed from string
+    从Json字符串解析HubConfig，返回解析后的HubConfig对象。
 
-    Parameter
-    ---------
-    :type config_json: str
-    a json string containing config
+    :param str config_json: Json字符串
 
-    Return
-    ------
     :rtype: HubConfig
-    object parsed from json.
     """
 
     logging.debug("[parse_from_string] parsing" + config_json[:20])
@@ -118,22 +119,17 @@ def parse_from_string(config_json):
     logging.debug("[parse_from_string] Sensor config item checked")
 
     # Return a HubConfig object
-    hub_config = HubConfig(config_json, config)
+    hub_config = HubConfig(config)
     logging.debug("[parse_from_string] returning HubConfig " + str(hub_config) + " addr=" + config["gateway_addr"])
     return hub_config
 
 
 def parse_from_file(file_name):
     """
-    Return a HubConfig, parsed from content of a text file.
-    JSON.
+    从文本文件解析HubConfig，返回解析后的HubConfig对象。
 
-    Parameter
-    ---------
-    :type file_name: str
+    :param str file_name: 文件名
 
-    Return
-    ------
     :rtype: HubConfig
     """
 

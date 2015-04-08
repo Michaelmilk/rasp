@@ -1,24 +1,25 @@
 # -*- coding: utf8 -*-
 
+"""本Python模块是系统中Hub的主要功能部分。"""
+
+__author__ = "tgmerge"
+
+
 import logging
 from importlib import import_module
-from module.hub.monitorthread import MonitorThread
-from module.hub.hubserver import HubServer
-from module.hub.hubconfig import HubConfig
+from pinic.hub.monitorthread import MonitorThread
+from pinic.hub.hubserver import HubServer
+from pinic.hub.hubconfig import HubConfig
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 class Hub(object):
-    """
-    Hub.
-    """
+    """Hub对象包含一个HubServer，能更新配置，并依据新配置载入传感器驱动模块并开启监视线程。"""
 
     def __init__(self, hub_config):
         """
-        Hub has a HubServer in it.
-        This method will run HubServer using params in hub_config directly.
-        :type hub_config:HubConfig
+        :param HubConfig hub_config: 最初配置
         """
 
         logging.debug("[Hub.__init__] hub_config=" + str(hub_config))
@@ -34,20 +35,18 @@ class Hub(object):
 
         self.apply_config(hub_config)
 
-        self.hub_server = HubServer(self)                   # A bottle HTTP server.
-        """ :type: HubServer """                            # Receive config from gateway.
+        self.hub_server = HubServer(self)                   # A bottle HTTP server. Receive config from gateway.
 
     def apply_config(self, hub_config, load_old_config=False):
         """
-        Update config of hub.
-        If exception happens in initializing new sensors, old config will be reloaded.
-        If exception happens while rolling back to old config, do nothing.
+        更新这个Hub的配置。
 
-        :type hub_config: HubConfig
-        New config to be load
+        如果开启新的传感器监视线程时发生了异常，将回滚到旧的配置。
 
-        :type load_old_config: bool
-        Should not set when called, used in case failed to load new config to prevent infinite loop.
+        如果这个回滚操作也发生了异常，将什么也不做并抛出它。
+
+        :param HubConfig hub_config: 要载入的新配置
+        :param bool load_old_config: 调用时无需设置。在载入失败时防止无限回滚使用。
         """
         logging.debug("[Hub.apply_config] hub_config=" + str(hub_config) + "load_old_config=" + str(load_old_config))
 
@@ -72,7 +71,7 @@ class Hub(object):
             for sensor_config in self.config.sensors:
 
                 # Import sensor driver module by its type. Rule: module filename is "sensor_[type].py"
-                sensor_module = import_module("module.hub.sensor_" + sensor_config["type"])
+                sensor_module = import_module("pinic.sensor.sensor_" + sensor_config["type"])
 
                 # Prepare sensor monitor thread
                 sensor = sensor_module.Sensor(sensor_config["id"], sensor_config["desc"], sensor_config["config"])
@@ -100,9 +99,7 @@ class Hub(object):
                 raise e
 
     def reset(self):
-        """
-        Clear config, clear threads, stop all sensors and monitor threads
-        """
+        """初始化Hub。包括清除配置、关闭所有传感器和它们的监视线程。"""
         logging.debug("[Hub.reset] resetting, sensor thread count: " + str(len(self.threads)))
 
         # stop all sensors & their monitor threads
@@ -114,9 +111,7 @@ class Hub(object):
         self.config = None
 
     def restart_whole_server(self):
-        """
-        Stop current server process, run some script to restart whole program
-        """
+        """停止整个解释器进程，调用一些脚本重启整个程序，以改变如服务器端口一类的配置。"""
         # TODO do something
         logging.warn("[Hub.reload_whole_server] not implemented yet!")
         pass
@@ -124,6 +119,8 @@ class Hub(object):
 
 def run_hub():
     """
+    运行Hub。请使用runhub.py调用。
+
     :rtype: Hub
     """
     from hubconfig import parse_from_file

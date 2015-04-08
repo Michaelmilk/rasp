@@ -1,3 +1,4 @@
-from module.hub import hub
+from pinic.hub import hub
 
-hub.run_hub()
+if __name__ == "__main__":
+    hub.run_hub()

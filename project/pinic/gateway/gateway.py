@@ -1,27 +1,28 @@
 # -*- coding: utf8 -*-
 
+"""本Python模块是系统中Gateway的主要功能部分。"""
+
+__author__ = "tgmerge"
+
+
 import logging
 import pycurl
 
 from gatewayserver import GatewayServer
-from module.gateway.gatewayconfig import GatewayConfig
-from module.hub.sensordata import SensorData
-from module.exception import ServerError
+from pinic.gateway.gatewayconfig import GatewayConfig
+from pinic.sensor.sensordata import SensorData
+from pinic.exception import ServerError
+
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 class Gateway(object):
-    """
-    Gateway.
-    This is where SensorData is filtered.
-    """
+    """Gateway对象包含一个GatewayServer，能更新配置，向上转发传感器数据，向下转发对Hub配置的操作。"""
 
     def __init__(self, gateway_config):
         """
-        Gateway has a HubServer in instance.
-        This method will run GatewayServer using params in gateway_config directly.
-        :type gateway_config:gatewayconfig.GatewayConfig
+        :param GatewayConfig gateway_config: 最初配置
         """
 
         logging.debug("[Gateway.__init__] gateway_config=" + str(gateway_config))
@@ -34,21 +35,16 @@ class Gateway(object):
 
         self.apply_config(gateway_config)
 
-        self.gateway_server = GatewayServer(self, self.config.gateway_host, self.config.gateway_port)
-        """ :type: GatewayServer """
+        self.gateway_server = GatewayServer(self)
 
         self.curl = pycurl.Curl()
-        """ :type: pycurl.Curl """
 
     def apply_config(self, gateway_config, load_old_config=False):
         """
-        Update config of gateway.
+        更新这个Gateway的配置。
 
-        :type gateway_config: GatewayConfig
-        New config to be load
-
-        :type load_old_config: bool
-        Should not set when called, used in case failed to load new config to prevent infinite loop.
+        :param GatewayConfig gateway_config: 要载入的新配置
+        :param bool load_old_config: 调用时无需设置。在载入失败时防止无限回滚使用。
         """
         logging.debug("[Gateway.apple_config] gateway_config=" + str(gateway_config) + "load_old_config=" + str(load_old_config))
 
@@ -71,27 +67,23 @@ class Gateway(object):
         self.config = gateway_config
 
     def reset(self):
-        """
-        Nothing to do.
-        """
+        """初始化Hub。尚不需要进行多余的操作。"""
         pass
 
     def restart_whole_server(self):
-        """
-        Stop current server process, run some script to restart whole program
-        """
+        """停止整个解释器进程，调用一些脚本重启整个程序，以改变如服务器端口一类的配置。"""
         # TODO do something
         logging.warn("[Gateway.reload_whole_server] not implemented yet!")
         pass
 
     def filter_and_send_sensor_data(self, sensor_data):
         """
-        Filter SensorData using self.filter.
-        If SensorData failed to pass any filter applied to it, ignore it.
-        Otherwise, send it to DataServer.
-        :type sensor_data: SensorData
-        """
+        使用配置中的规则过滤下层Hub传来的传感器数据。
+        如果数据被过滤规则阻拦，则丢弃它。
+        否则发送给上层的DataServer。
 
+        :param SensorData sensor_data: 要处理的传感器数据
+        """
         # 1. Some type check
         if not isinstance(sensor_data, SensorData):
             raise TypeError("sensor_data: %s is not a SensorData instance" % str(sensor_data))
@@ -135,6 +127,8 @@ class Gateway(object):
 
 def run_gateway():
     """
+    运行Gateway。请使用rungateway.py调用。
+
     :rtype: Gateway
     """
     from gatewayconfig import parse_from_file

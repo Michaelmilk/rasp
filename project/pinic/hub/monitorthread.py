@@ -1,35 +1,35 @@
 # -*- coding: utf8 -*-
 
+"""本Python模块含有Hub的传感器监视和数据发送线程。"""
+
+__author__ = "tgmerge"
+
+
 import logging
 from threading import Thread, Event
 import pycurl
-from module.hub.basesensor import BaseSensor
+from pinic.sensor.basesensor import BaseSensor
+
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 class MonitorThread(Thread):
+    """传感器监视线程。以固定时间间隔从传感器读取数据，并发送给Gateway。"""
+
     def __init__(self, sensor, gateway_addr, gateway_port, interval):
         """
-        :type sensor: BaseSensor
-        :type gateway_addr: str
-        :type gateway_port: int
-        :type interval: float
+        :param BaseSensor sensor: 传感器对象。
+        :param str gateway_addr:  Gateway的IP地址。
+        :param int gateway_port:  Gateway的端口。
+        :param float interval:    传感器读取时间间隔。
         """
 
         Thread.__init__(self)
         self.sensor = sensor
-        """ :type: BaseSensor """
-
         self.gateway_addr = gateway_addr
-        """ :type: str """
-
         self.gateway_port = gateway_port
-        """ :type: int """
-
         self.interval = interval
-        """ :type: float """
-
         self.stop_event = Event()
 
     def run(self):

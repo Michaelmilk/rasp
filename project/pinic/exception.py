@@ -1,10 +1,19 @@
-__author__ = 'tgmerge'
+# coding=utf-8
+
+"""
+本Python模块包含pinic可能抛出的自定义异常。
+
+* ServerError: 被各Web服务器抛出，可包含其他异常。
+"""
+
+__author__ = "tgmerge"
 
 
 class ServerError(Exception):
 
     def __init__(self, value, inner_error=None):
         """
+        创建一个ServerError。向inner_error传入其他异常以包含它。
         :type inner_error: Exception
         """
         self.value = value

@@ -1,3 +1,4 @@
-from module.gateway import gateway
+from pinic.gateway import gateway
 
-gateway.run_gateway()
+if __name__ == "__main__":
+    gateway.run_gateway()

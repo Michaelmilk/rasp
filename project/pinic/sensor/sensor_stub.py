@@ -1,15 +1,23 @@
 # -*- coding: utf-8 -*-
 
+"""本Python模块是一个传感器驱动，模拟一个会返回值的传感器。"""
+
+__author__ = "tgmerge"
+
+
 from time import time
 import logging
-from basesensor import BaseSensor
-from module.hub.sensordata import SensorData
+from pinic.sensor.basesensor import BaseSensor
+from pinic.sensor.sensordata import SensorData
 
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 class Sensor(BaseSensor):
+    """
+    测试用的虚拟传感器驱动类。每次会返回不断递增的数值。
+    """
 
     def __init__(self, sensor_id, sensor_desc, sensor_config):
         super(Sensor, self).__init__("Stub", sensor_id, sensor_desc, sensor_config)
