@@ -9,12 +9,15 @@
 __author__ = "tgmerge"
 
 
+from json import loads
+
+
 class SensorData(object):
     """
     SensorData对象是一份传感器数据。
     """
 
-    def __init__(self, sensor_id=None, sensor_type=None, raw_value=None, hub_id=None, timestamp=None):
+    def __init__(self, sensor_id="", sensor_type="", raw_value=None, hub_id="", timestamp=None):
         """
         :param str sensor_id:   源传感器的ID。
         :param str sensor_type: 源传感器的种类(type值)。
@@ -43,3 +46,34 @@ class SensorData(object):
             "hub_id": self.hub_id,
             "timestamp": self.timestamp
         })
+
+
+def parse_from_string(data_json):
+    """
+    从Json字符串解析SensorData，返回解析后的SensorData对象。
+
+    :param str data_json: Json字符串
+
+    :rtype: SensorData
+    """
+
+    # Load into dict
+    data = loads(data_json)
+
+    # Check first level items
+    valid_config_items = [
+        ("sensor_id", basestring),
+        ("sensor_type", basestring),
+        ("raw_value", float),
+        ("hub_id", basestring),
+        ("timestamp", float),
+    ]
+
+    for (key, keyType) in valid_config_items:
+        if key not in data:
+            raise ValueError("key %s is not in data_json" % key)
+        if not isinstance(data[key], keyType):
+            raise ValueError("key %s is not '%s' instance" % (key, str(keyType)))
+
+    # Return new object
+    return SensorData(data["sensor_id"], data["sensor_type"], data["raw_value"], data["hub_id"], data["timestamp"])

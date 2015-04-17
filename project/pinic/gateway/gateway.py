@@ -124,6 +124,29 @@ class Gateway(object):
                 logging.exception("[Gateway.filter_and_send_sensor_data] exception:" + str(e))
                 raise ServerError("Error on sending sensor data to data server.", e)
 
+    def find_hub_by_id(self, hub_id):
+        """
+        根据传入的hub_id在已知的hub中查找，返回(hub_addr, hub_port)。
+        如果找不到，抛出异常
+
+        :rtype (str, int)
+        """
+        result = [hub for hub in self.config.hubs if hub_id == hub["hub_id"]]
+        if len(result) == 0:
+            raise ServerError("[find_hub_by_id]: Cannot find hub with id=%s." % hub_id)
+        elif len(result) > 1:
+            raise ServerError("[find_hub_by_id]: Found multiple hub with id=%s. Do nothing." % hub_id)
+        else:
+            return result[0]["hub_addr"], result[0]["hub_port"]
+
+    def get_dataserver_info(self):
+        """
+        返回dataserver的配置。返回(dataserver_addr, dataserver_port)。
+
+        :rtype (str, int)
+        """
+        return self.config.dataserver_addr, self.config.dataserver_port
+
 
 def run_gateway():
     """
