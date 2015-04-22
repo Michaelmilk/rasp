@@ -17,7 +17,7 @@ class SensorData(object):
     SensorData对象是一份传感器数据。
     """
 
-    def __init__(self, sensor_id="", sensor_type="", raw_value=None, hub_id="", timestamp=None):
+    def __init__(self, sensor_id="", sensor_type="", raw_value=None, timestamp=None):
         """
         :param str sensor_id:   源传感器的ID。
         :param str sensor_type: 源传感器的种类(type值)。
@@ -29,7 +29,6 @@ class SensorData(object):
         self.sensor_id = sensor_id
         self.sensor_type = sensor_type
         self.raw_value = raw_value
-        self.hub_id = hub_id
         self.timestamp = timestamp
 
     def get_json_dumps(self):
@@ -43,7 +42,6 @@ class SensorData(object):
             "sensor_id": self.sensor_id,
             "sensor_type": self.sensor_type,
             "raw_value": self.raw_value,
-            "hub_id": self.hub_id,
             "timestamp": self.timestamp
         })
 
@@ -65,7 +63,6 @@ def parse_from_string(data_json):
         ("sensor_id", basestring),
         ("sensor_type", basestring),
         ("raw_value", float),
-        ("hub_id", basestring),
         ("timestamp", float),
     ]
 
@@ -76,4 +73,4 @@ def parse_from_string(data_json):
             raise ValueError("key %s is not '%s' instance" % (key, str(keyType)))
 
     # Return new object
-    return SensorData(data["sensor_id"], data["sensor_type"], data["raw_value"], data["hub_id"], data["timestamp"])
+    return SensorData(data["sensor_id"], data["sensor_type"], data["raw_value"], data["timestamp"])

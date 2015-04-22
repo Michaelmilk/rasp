@@ -31,7 +31,7 @@ class Sensor(BaseSensor):
         self.count += 1
         raw_value = float(self.count)
         logging.debug("[Sensor.get_data] returning " + str(raw_value) + " sensorid=" + self.sensor_id)
-        return SensorData(self.sensor_id, self.sensor_type, raw_value, "", time())
+        return SensorData(self.sensor_id, self.sensor_type, raw_value, time())
 
     def get_json_dumps_data(self):
         json_str = self.get_data().get_json_dumps()

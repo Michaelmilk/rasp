@@ -34,4 +34,4 @@ def show_post(url):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8052, server="gevent")
+    app.run(host="localhost", port=9002, server="gevent")
