@@ -1,4 +1,4 @@
-from pinic.gateway import gateway
+from pinic.server import server
 
 if __name__ == "__main__":
-    gateway.run_gateway()
+    server.run_gateway()

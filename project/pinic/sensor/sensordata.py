@@ -1,9 +1,13 @@
 # -*- coding: utf8 -*-
 
 """
-本Python模块包含传感器数据类。
+本Python模块包含传感器数据类SensorData，用于封装从传感器获取的数据。
 
-* SensorData: 封装从传感器获取的数据。
+* 要使用SensorData的值，可以读取它的SensorData的sensor_id、sensor_type、raw_value、timestamp四个成员。
+
+* 要Json化一个SensorData对象，可以使用SensorData.get_json_dumps()方法。
+
+* 要从Json文本解析SensorData对象，可以使用本模块中的parse_from_string(str)方法。
 """
 
 __author__ = "tgmerge"
@@ -22,7 +26,6 @@ class SensorData(object):
         :param str sensor_id:   源传感器的ID。
         :param str sensor_type: 源传感器的种类(type值)。
         :param float raw_value: 原始数据的值。
-        :param str hub_id:      该份数据传递到的Hub。暂时没有作用。
         :param float timestamp: 产生该数据的时间戳。
         """
 

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
-"""本Python模块含有传感器驱动的基类。要编写新的传感器驱动，你需要继承BaseSensor类。"""
+"""
+本Python模块含有传感器驱动的基类。要编写新的传感器驱动，你需要继承BaseSensor类。
+"""
 
 __author__ = "tgmerge"
 
@@ -11,7 +13,6 @@ from pinic.sensor.sensordata import SensorData
 class BaseSensor(object):
     """
     传感器驱动的基类。要编写新的传感器驱动，继承这个类，并实现其中的所有方法。
-
     范例可参见sensor_stub.py。
     """
 
@@ -34,7 +35,6 @@ class BaseSensor(object):
     def initialize(self):
         """
         使用sensor_config的配置初始化传感器。
-
         编写传感器驱动模块时，请覆盖这个方法，并在方法中设置is_initialized为true。
         """
         self.is_initialized = True
@@ -42,7 +42,6 @@ class BaseSensor(object):
     def get_data(self):
         """
         从传感器读取传感值，返回包含传感值的SensorData对象。
-
         编写传感器驱动模块时，请覆盖这个方法，并在读取值之前检查is_initialized。
 
         :rtype: SensorData
@@ -56,7 +55,6 @@ class BaseSensor(object):
     def get_json_dumps_data(self):
         """
         从传感器读取传感值，返回包含传感值的JSON字符串。
-
         编写传感器驱动模块时，如需要可以覆盖这个方法。
 
         :rtype: str
@@ -66,7 +64,6 @@ class BaseSensor(object):
     def close(self):
         """
         安全地停止传感器的工作。
-
         编写传感器驱动模块时，请覆盖这个方法，并在方法中设置is_initialized为false。
         """
         self.is_initialized = False

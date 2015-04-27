@@ -1,7 +1,12 @@
 # -*- coding: utf8 -*-
 
 """
-本Python模块是系统中Node的主要功能部分。
+本Python模块含有Node类，即系统中的Node部分。
+
+Node在自身启动后，会向Server的/server/regnode注册。
+
+配置文件更改时，会先向Server的/server/unregnode注销，之后再次注册。
+期间Node的ID等等根据新旧配置的不同可能会有变化。
 
 模块线程
 ========
@@ -17,11 +22,13 @@
 
 ::
 
+    ! Warning: Out of date
+
     On start:
         1. Load config(from default path)
         Init sensors
         Init monitor threads
-        2. Start bottle thread
+        2. Start bottle
         3. Reg to server(curl server/regnode)
 
     GET /node/sensordata/<sensor_id>
@@ -64,10 +71,10 @@ from gevent import monkey
 monkey.patch_all()
 import logging
 import threading
-from json import dumps
 from importlib import import_module
-from bottle import Bottle, HTTPResponse, request
+from bottle import Bottle, request
 import pycurl
+from pinic.util import generate_500
 from pinic.node.nodeconfig import NodeConfig
 from pinic.node.nodeconfig import parse_from_string as parse_node_config_from_string
 
@@ -92,9 +99,8 @@ class Node(object):
         self.sensor_threads = []
         """ :type: list of SensorThread """
 
-        self.apply_config(node_config)  # 1. 应用配置，启动配置中的传感器和线程
-        self.start_local_server()       # 2. 启动bottle服务线程
-        self.reg_to_server()            # 3. 向Server注册
+        self.apply_config(node_config)  # 1. 应用配置，向server注册
+        self.start_local_server()       # 2. 启动bottle
 
     # 行为方法
     # ========
@@ -112,7 +118,7 @@ class Node(object):
 
         # 1. 类型检查
         if not isinstance(new_config, NodeConfig):
-            raise TypeError("%s is not a HubConfig instance" % str(new_config))
+            raise TypeError("%s is not a NodeConfig instance" % str(new_config))
 
         # 2. 备份旧的配置
         old_config = self.config
@@ -134,10 +140,9 @@ class Node(object):
         self.start_sensor_threads()
 
         # 8. 如果新配置的node_host或node_port与旧配置不同，
-        # TODO 执行shell脚本以重启整个应用。bottle无法自行重启……等等，也许用多线程就可以了？
-        # TODO 重启服务线程来解决这个问题，问题是如何备份旧的配置？
+        # TODO 执行shell脚本以重启整个应用。bottle无法自行重启……
         if (old_config is not None) and ((new_config.node_port != old_config.node_port) or (new_config.node_host != old_config.node_host)):
-            self.restart_bottle_thread()
+            self.restart_bottle()
 
     def start_local_server(self):
         """
@@ -147,6 +152,7 @@ class Node(object):
         self.bottle.route("/node/nodeconfig/<node_id>", method="POST", callback=self.post_node_config)
         self.bottle.route("/node/nodeconfig/<node_id>", method="GET", callback=self.get_node_config)
         self.bottle.route("/node/sensordata/<sensor_id>", method="GET", callback=self.get_sensor_data)
+        self.bottle.route("/node/heartbeat/<node_id>", method="GET", callback=self.get_heartbeat)
 
         self.bottle.run(
             host=self.config.node_host,
@@ -181,6 +187,7 @@ class Node(object):
         curl.setopt(pycurl.TIMEOUT, 30)
         curl.setopt(pycurl.POSTFIELDS, self.config.get_json_string())
         curl.perform()
+        curl.close()
         # todo 处理异常
 
     def unreg_to_server(self):
@@ -194,29 +201,30 @@ class Node(object):
         curl.setopt(pycurl.TIMEOUT, 30)
         curl.setopt(pycurl.POSTFIELDS, self.config.get_json_string())
         curl.perform()
+        curl.close()
         # todo 处理异常
 
-    def restart_bottle_thread(self):
+    def restart_bottle(self):
         # todo implement
         pass
 
-    def generate_500(self, desc, err=None):
-        """
-        生成带信息的HTTP 500响应，用于服务器错误。
-        返回一个HTTPResponse，含有Json表示的说明信息(desc)和异常(err)。
-
-        :param str desc: 错误信息
-        :param Exception err: 要包含的异常
-        :rtype: HTTPResponse
-        """
-        return HTTPResponse(status=500, body=dumps({
-            "status": 500,
-            "desc": desc,
-            "exception": str(err)
-        }))
-
     # HTTP处理方法
     # ============
+
+    def get_heartbeat(self, node_id):
+        """
+        处理GET /node/heartbeat/<node_id>。
+        返回一个空的HTTP 200，用以确认Node存活。
+        如果请求错误或出现异常，返回HTTP 500。
+
+        :param basestring node_id: URL中的<node_id>部分。
+        """
+        # 1. 检查node_id:
+        if node_id != self.config.node_id:
+            return generate_500("Cannot find node with node_id='%s'" % node_id)
+
+        # 2. 返回HTTP 200
+        return
 
     def post_node_config(self, node_id):
         """
@@ -228,19 +236,19 @@ class Node(object):
         """
         # 1. 检查node_id:
         if node_id != self.config.node_id:
-            return self.generate_500("Cannot find node with node_id='%s'" % node_id)
+            return generate_500("Cannot find node with node_id='%s'" % node_id)
 
         # 2. 解析新的node_config：
         try:
             new_config = parse_node_config_from_string(request.body.read())
         except ValueError as e:
-            return self.generate_500("Error on parsing new config.", e)
+            return generate_500("Error on parsing new config.", e)
 
         # 3. 应用新的node_config:
         try:
             self.apply_config(new_config)
         except Exception as e:
-            return self.generate_500("CAUTION: Error on applying new config.", e)
+            return generate_500("CAUTION: Error on applying new config.", e)
 
         # 4. 成功
         return self.config.get_json_string()
@@ -255,7 +263,7 @@ class Node(object):
         """
         # 1. 检查node_id:
         if node_id != self.config.node_id:
-            return self.generate_500("Cannot find node with node_id='%s'" % node_id)
+            return generate_500("Cannot find node with node_id='%s'" % node_id)
 
         # 2. 返回node_config:
         return self.config.get_json_string()
@@ -274,7 +282,7 @@ class Node(object):
                 sensor_thread = x
                 break
         else:
-            return self.generate_500("Cannot find sensor with sensor_id='%s'" % sensor_id)
+            return generate_500("Cannot find sensor with sensor_id='%s'" % sensor_id)
 
         # 2. 从该传感器读数据
         return sensor_thread.get_json_dumps_sensor_data()
@@ -332,6 +340,7 @@ class SensorThread(threading.Thread):
             try:
                 curl.setopt(pycurl.POSTFIELDS, self.sensor.get_json_dumps_data())
                 curl.perform()
+                curl.close()
             except Exception as e:
                 logging.exception("[SensorThread.run] exception:" + str(e))
 

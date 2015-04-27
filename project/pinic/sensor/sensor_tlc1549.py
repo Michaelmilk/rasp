@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
-"""本Python模块是一个传感器驱动，用于TLC1549 A/D转换器。"""
+"""
+本Python模块是一个传感器驱动，用于TLC1549 A/D转换器。
+"""
 
 __author__ = "tgmerge"
 
@@ -49,7 +51,7 @@ class Sensor(BaseSensor):
         else:
             raw_value = -1.0
         logging.debug("[Sensor.get_data] returning " + str(raw_value) + " sensorid=" + self.sensor_id)
-        return SensorData(self.sensor_id, self.sensor_type, raw_value, "", time())
+        return SensorData(self.sensor_id, self.sensor_type, raw_value, time())
 
     def get_json_dumps_data(self):
         json_str = self.get_data().get_json_dumps()

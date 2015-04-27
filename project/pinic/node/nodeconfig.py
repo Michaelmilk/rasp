@@ -2,10 +2,13 @@
 
 """
 本Python模块含有NodeConfig类，用于解析和封装Node的配置。
-
 另外，还包含从文件和字符串解析Node配置的方法。
+文件或字符串中，Node的配置以JSON存储。
 
-文件或字符串中，Node的配置以JSON存储。配置示例::
+配置示例
+========
+
+::
 
     {
         "node_host":"localhost",             # Node自身的服务主机，可以0.0.0.0
@@ -46,10 +49,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 class NodeConfig(object):
     """
-    封装Node的配置。
-
-    任何情况下不应该使用NodeConfig()方法创建NodeConfig对象，
-    而应该使用parse_from_string()和parse_from_file()从字符串和文件解析NodeConfig。
+    封装Node的配置。任何情况下不应该使用NodeConfig()创建NodeConfig对象，
+    而应该使用parse_from_string()和parse_from_file()从字符串和文件解析。
     """
 
     first_level_check = [
@@ -62,13 +63,13 @@ class NodeConfig(object):
         ("sensors", list),
         ("filters", list)
     ]
-    """ 用于在Json解析中检查配置的第一级键值错误 """
+    """ 用于在Json解析中，检查配置的第一级键值是否有误 """
 
     second_level_item = [
         "sensors",
         "filters"
     ]
-    """ 用于在Json解析中检查配置的第二级键值错误 """
+    """ 用于在Json解析中，检查配置的第二级键值是否有误 """
 
     second_level_checks = {
         "sensors": [
@@ -140,11 +141,9 @@ class NodeConfig(object):
 def parse_from_string(config_json):
     """
     从Json字符串解析NodeConfig，返回解析后的NodeConfig对象。
-
     如果解析中发现缺失的键，或值的类型错误，将抛出ValueError异常，并包含缺失和错误的信息。
 
     :param str config_json: Json字符串
-
     :rtype: NodeConfig
     """
 
@@ -185,9 +184,9 @@ def parse_from_string(config_json):
 def parse_from_file(file_name):
     """
     从文本文件解析NodeConfig，返回解析后的NodeConfig对象。
+    如果解析中发现缺失的键，或值的类型错误，将抛出ValueError异常，并包含缺失和错误的信息。
 
     :param str file_name: 文件名
-
     :rtype: NodeConfig
     """
 
