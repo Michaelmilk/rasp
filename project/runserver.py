@@ -1,4 +1,4 @@
 from pinic.server import server
 
 if __name__ == "__main__":
-    server.run_gateway()
+    server.run_server()

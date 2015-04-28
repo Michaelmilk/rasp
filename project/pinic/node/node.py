@@ -14,8 +14,9 @@ Node在自身启动后，会向Server的/server/regnode注册。
 ::
 
     main ----------- main          # 服务器线程
-                |
-                ---- SensorMonitor # 传感器监视线程，需要时发送数据给Server
+            |   |
+            |   ---- SensorMonitor # 传感器监视线程，需要时发送数据给Server
+            -------- ServerMonitor # Server监视线程，定期发送keepnode心跳
 
 方法流程
 ========
@@ -99,8 +100,11 @@ class Node(object):
         self.sensor_threads = []
         """ :type: list of SensorThread """
 
+        self.server_monitor = None       # ServerMonitor
+        """ :type: ServerMonitor """
+
         self.apply_config(node_config)  # 1. 应用配置，向server注册
-        self.start_local_server()       # 2. 启动bottle
+        self.start_bottle()       # 2. 启动bottle
 
     # 行为方法
     # ========
@@ -124,8 +128,9 @@ class Node(object):
         old_config = self.config
 
         # 3. 向Server解除注册(如果有Server)
-        if self.config is not None:
-            self.unreg_to_server()
+        if self.server_monitor is not None:
+            self.server_monitor.stop()
+            self.server_monitor.unreg_to_server()
 
         # 4. 停止传感器线程
         self.stop_sensor_threads()
@@ -134,7 +139,9 @@ class Node(object):
         self.config = new_config
 
         # 6. 向Server重新注册
-        self.reg_to_server()
+        self.server_monitor = ServerMonitor(self)
+        self.server_monitor.reg_to_server()
+        self.server_monitor.start()
 
         # 7. 启动新的传感器线程。如果有异常，**不视为**配置应用失败
         self.start_sensor_threads()
@@ -144,21 +151,27 @@ class Node(object):
         if (old_config is not None) and ((new_config.node_port != old_config.node_port) or (new_config.node_host != old_config.node_host)):
             self.restart_bottle()
 
-    def start_local_server(self):
+    def start_bottle(self):
         """
         启动Node的Bottle服务器。
         """
         # URL路由
+        logging.debug("[Node.start_bottle] starting bottle, node_id=%s" % self.config.node_id)
+
         self.bottle.route("/node/nodeconfig/<node_id>", method="POST", callback=self.post_node_config)
         self.bottle.route("/node/nodeconfig/<node_id>", method="GET", callback=self.get_node_config)
         self.bottle.route("/node/sensordata/<sensor_id>", method="GET", callback=self.get_sensor_data)
-        self.bottle.route("/node/heartbeat/<node_id>", method="GET", callback=self.get_heartbeat)
 
         self.bottle.run(
             host=self.config.node_host,
             port=self.config.node_port,
             server="gevent"
         )  # TODO 使用Node时加锁？
+
+    def restart_bottle(self):
+        # todo implement
+        logging.debug("[Node.restart_bottle] restarting bottle")
+        pass
 
     def start_sensor_threads(self):
         """
@@ -176,55 +189,8 @@ class Node(object):
         for thread in self.sensor_threads:
             thread.stop()
 
-    def reg_to_server(self):
-        """
-        向Server注册自己。发送一个POST请求到server的``/server/regnode``，请求内容是自身的config。
-        """
-        request_url = str("http://%s:%d/server/regnode" % (self.config.server_addr, self.config.server_port))
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-        curl.setopt(pycurl.TIMEOUT, 30)
-        curl.setopt(pycurl.POSTFIELDS, self.config.get_json_string())
-        curl.perform()
-        curl.close()
-        # todo 处理异常
-
-    def unreg_to_server(self):
-        """
-        向Server解除注册自己。发送一个POST请求到server的``/server/unregnode``，请求内容是自身的config。
-        """
-        request_url = str("http://%s:%d/server/unregnode" % (self.config.server_addr, self.config.server_port))
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-        curl.setopt(pycurl.TIMEOUT, 30)
-        curl.setopt(pycurl.POSTFIELDS, self.config.get_json_string())
-        curl.perform()
-        curl.close()
-        # todo 处理异常
-
-    def restart_bottle(self):
-        # todo implement
-        pass
-
     # HTTP处理方法
     # ============
-
-    def get_heartbeat(self, node_id):
-        """
-        处理GET /node/heartbeat/<node_id>。
-        返回一个空的HTTP 200，用以确认Node存活。
-        如果请求错误或出现异常，返回HTTP 500。
-
-        :param basestring node_id: URL中的<node_id>部分。
-        """
-        # 1. 检查node_id:
-        if node_id != self.config.node_id:
-            return generate_500("Cannot find node with node_id='%s'" % node_id)
-
-        # 2. 返回HTTP 200
-        return
 
     def post_node_config(self, node_id):
         """
@@ -288,6 +254,88 @@ class Node(object):
         return sensor_thread.get_json_dumps_sensor_data()
 
 
+class ServerMonitor(threading.Thread):
+    """Server监视线程，定期向Server发送/server/keepnode/<node_id>以表明自己存活"""
+
+    def __init__(self, node):
+        """
+        初始化。
+
+        :param Node node: 开启此线程的Node
+        TODO 加锁
+        """
+        super(ServerMonitor, self).__init__()
+        # 参数
+        self.node = node
+        self.server_addr = node.config.server_addr
+        self.server_port = node.config.server_port
+        self.node_id = node.config.node_id
+        self.keep_alive_interval = 10.0  # 秒
+        self.stop_event = threading.Event()  # 设置停止事件
+
+    def reg_to_server(self):
+        """
+        向Server注册Node。发送一个POST请求到server的``/server/regnode``，请求内容是Node的config。
+        """
+        logging.debug("[ServerMonitor.reg_to_server] reg to server. addr=%s, port=%d" % (self.server_addr, self.server_port))
+        request_url = str("http://%s:%d/server/regnode" % (self.server_addr, self.server_port))
+        curl = pycurl.Curl()
+        curl.setopt(pycurl.URL, request_url)
+        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
+        curl.setopt(pycurl.TIMEOUT, 30)
+        curl.setopt(pycurl.POSTFIELDS, self.node.config.get_json_string())
+        curl.perform()
+        # todo 处理异常
+
+    def unreg_to_server(self):
+        """
+        向Server解除注册Node。发送一个POST请求到server的``/server/unregnode``，请求内容是Node的config。
+        """
+        logging.debug("[ServerMonitor.unreg_to_server] unreg to server. addr=%s, port=%d" % (self.server_addr, self.server_port))
+        request_url = str("http://%s:%d/server/unregnode" % (self.server_addr, self.server_port))
+        curl = pycurl.Curl()
+        curl.setopt(pycurl.URL, request_url)
+        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
+        curl.setopt(pycurl.TIMEOUT, 30)
+        curl.setopt(pycurl.POSTFIELDS, self.node.config.get_json_string())
+        curl.perform()
+        # todo 处理异常
+
+    def send_keep_node(self):
+        """
+        向Server的/server/keepnode/<node_id>发送一个GET，证明自身存活
+        如果返回200，说明正常
+        如果返回500，说明Server尚不知道自身，故进行reg_to_server向Server注册自己。
+        """
+        logging.debug("[ServerMonitor.send_keep_node] sending keep_node message")
+        request_url = str("http://%s:%d/server/keepnode/%s" % (self.server_addr, self.server_port, self.node_id))
+        try:
+            curl = pycurl.Curl()
+            curl.setopt(pycurl.URL, request_url)
+            curl.setopt(pycurl.CONNECTTIMEOUT, 10)
+            curl.setopt(pycurl.TIMEOUT, 30)
+            curl.perform()
+            if curl.getinfo(pycurl.HTTP_CODE) == 500:
+                self.unreg_to_server()
+                self.reg_to_server()
+        except Exception as e:
+            logging.exception("[ServerMonitor.send_keep_node] exception:" + str(e))
+
+    def run(self):
+        """
+        ServerMonitor以如下方式运行。
+
+        每self.keep_alive_interval秒，运行send_keep_node，发送自身存活消息。
+        """
+        # todo 加锁
+
+        while not self.stop_event.wait(self.keep_alive_interval):
+            self.send_keep_node()
+
+    def stop(self):
+        self.stop_event.set()
+
+
 class SensorThread(threading.Thread):
     """传感器监视线程。以固定时间间隔从传感器读取数据，并发送给Gateway。"""
 
@@ -329,21 +377,21 @@ class SensorThread(threading.Thread):
 
     def run(self):
         request_url = str("http://%s:%d/server/sensordata" % (self.server_addr, self.server_port))
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-        curl.setopt(pycurl.TIMEOUT, 30)
 
         self.sensor.initialize()
 
         while not self.stop_event.wait(self.sensor_interval):
             try:
+                curl = pycurl.Curl()
+                curl.setopt(pycurl.URL, request_url)
+                curl.setopt(pycurl.CONNECTTIMEOUT, 10)
+                curl.setopt(pycurl.TIMEOUT, 30)
                 curl.setopt(pycurl.POSTFIELDS, self.sensor.get_json_dumps_data())
                 curl.perform()
-                curl.close()
             except Exception as e:
                 logging.exception("[SensorThread.run] exception:" + str(e))
 
     def stop(self):
         self.sensor.close()
         self.stop_event.set()
+
