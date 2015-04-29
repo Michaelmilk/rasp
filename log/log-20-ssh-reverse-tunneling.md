@@ -25,8 +25,37 @@
 
 流程相关。
 
+http://unix.stackexchange.com/questions/46235/how-does-reverse-ssh-tunneling-work
+
+USE PARAMIKO?
+
+example:http://www.ruanyifeng.com/blog/2011/12/ssh_port_forwarding.html
+
+https://github.com/paramiko/paramiko/blob/master/demos/rforward.py
+
 ```
-                       | [Forwarder]
+[server] port=9002         |   [forwarder] port=9003                   
+                                                                           
+  HTTP GET    ---------------> /forwarder/regserver              
+  port:8123  <----------------                                             
+                                                                           
+  run: ssh -f -N -T -R 8123:localhost:9002 username@forwarder_addr       
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+                                                                           
+Server:
+
+
+
+| [Forwarder]
+ssh user:pass   | On start
                        | 1. Start sshd
                        | 2. Provide /forwarder/regserver
                        | 

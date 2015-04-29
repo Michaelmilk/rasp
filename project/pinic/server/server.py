@@ -87,12 +87,12 @@ import threading
 import pycurl
 from pinic.server.serverconfig import ServerConfig
 from pinic.server.serverconfig import parse_from_string as parse_server_config_from_string
-from pinic.util import generate_500, TimeoutError
+from pinic.util import generate_500
 from pinic.node.nodeconfig import parse_from_string as parse_node_config_from_string
-from bottle import Bottle, request
+from bottle import Bottle, request, redirect, static_file
 from StringIO import StringIO
 from time import time
-
+from json import dumps
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -167,9 +167,9 @@ class Server(object):
         """
         启动Node的Bottle服务器。
         """
-        # URL路由
         logging.debug("[Server.start_bottle] starting bottle, server_id=%s" % self.config.server_id)
 
+        # URL路由，API部分
         self.bottle.route("/server/regnode", method="POST", callback=self.post_reg_node)
         self.bottle.route("/server/unregnode", method="POST", callback=self.post_unreg_node)
         self.bottle.route("/server/keepnode/<node_id>", method="GET", callback=self.get_keep_node)
@@ -182,6 +182,12 @@ class Server(object):
 
         self.bottle.route("/server/sensordata/<server_id>/<node_id>/<sensor_id>", method="GET", callback=self.get_sensor_data)
         self.bottle.route("/server/sensordata", method="POST", callback=self.post_sensor_data)
+
+        self.bottle.route("/server/knownnodes/<server_id>", method="GET", callback=self.get_known_nodes)
+
+        # URL路由，静态页面部分
+        self.bottle.route("/", method="GET", callback=lambda: redirect("/static/index.html"))
+        self.bottle.route("/static/<filename>", method="GET", callback=lambda filename: static_file(filename, root="static/server/"))
 
         self.bottle.run(
             host=self.config.server_host,
@@ -456,6 +462,21 @@ class Server(object):
             return generate_500("Error on send sensordata to forwarder.", e)
         return  # HTTP 200
 
+    def get_known_nodes(self, server_id):
+        """
+        处理GET /server/knownnodes。
+        如果成功，返回HTTP 200，以json形式包含当前的known_nodes数据。
+        如果失败，返回HTTP 500。
+        """
+        if server_id != self.config.server_id:
+            return generate_500("Cannot find server with server_id='%s'" % server_id)
+
+        result = []
+
+        for n in self.known_nodes:
+            result.append(n.get_dict())
+        return dumps(result)
+
 
 class NodeMonitor(threading.Thread):
     """Node监视线程，定期检查已知Node的最后存活时间，如果超出限制则从已知Node列表中清除Node"""
@@ -601,6 +622,19 @@ class NodeInfo(object):
             self.last_active_time = time()
         else:
             self.last_active_time = last_active_time
+
+    def get_dict(self):
+        """
+        以dict的形式返回自身的信息。
+
+        :rtype: dict
+        """
+        return {
+            "addr": self.addr,
+            "port": self.port,
+            "id": self.id,
+            "desc": self.desc
+        }
 
 
 def run_server():
