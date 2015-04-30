@@ -382,12 +382,8 @@ class SensorThread(threading.Thread):
 
         while not self.stop_event.wait(self.sensor_interval):
             try:
-                curl = pycurl.Curl()
-                curl.setopt(pycurl.URL, request_url)
-                curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-                curl.setopt(pycurl.TIMEOUT, 30)
-                curl.setopt(pycurl.POSTFIELDS, self.sensor.get_json_dumps_data())
-                curl.perform()
+                pass
+                # removed: auto send sensor value
             except Exception as e:
                 logging.exception("[SensorThread.run] exception:" + str(e))
 

@@ -1,6 +1,6 @@
 # 关于前端
 
-我在server上，可以用的接口有以下这些。
+在server上，可以用的接口有以下这些。
 
 获取server的配置。
 ``GET /server/serverconfig/<server_id>``
@@ -11,7 +11,7 @@
 获取server已知的所有node。
 ``GET /server/knownnodes/<server_id>``
 
-获取一个node的配置。
+获取一个node的配置，包括传感器列表。
 ``GET /server/nodeconfig/<server_id>/<node_id>``
 
 更新一个node的配置。
@@ -44,3 +44,19 @@
  |                                          |
  --------------------------------------------
 ```
+
+- - -
+
+文档：
+
+* 架构文档
+    - Node部分文档
+    - Server部分文档
+    - Forwarder部分文档
+    - 网页功能设计
+* 网卡MAC地址读取，C&python --> uuid
+* 页面
+
++ 批量取多个传感器的值
+
++ 

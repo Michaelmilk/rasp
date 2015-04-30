@@ -633,7 +633,8 @@ class NodeInfo(object):
             "addr": self.addr,
             "port": self.port,
             "id": self.id,
-            "desc": self.desc
+            "desc": self.desc,
+            "last_active_time": self.last_active_time
         }
 
 
