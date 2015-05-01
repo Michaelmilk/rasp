@@ -86,7 +86,7 @@ class ServerConfig(object):
 
 def parse_from_string(config_json):
     """
-    从Json字符串解析ServerConfig，返回解析后的NodeConfig对象。
+    从Json字符串解析ServerConfig，返回解析后的ServerConfig对象。
     如果解析中发现缺失的键，或值的类型错误，将抛出ValueError异常，并包含缺失和错误的信息。
 
     :param str config_json: Json字符串

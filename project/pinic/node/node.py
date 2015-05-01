@@ -76,6 +76,7 @@ from importlib import import_module
 from bottle import Bottle, request
 import pycurl
 from pinic.util import generate_500
+from pinic.sensor.sensordata import SensorData
 from pinic.node.nodeconfig import NodeConfig
 from pinic.node.nodeconfig import parse_from_string as parse_node_config_from_string
 
@@ -108,6 +109,39 @@ class Node(object):
 
     # 行为方法
     # ========
+
+    def filter_sensor_data(self, sensor_data):
+        """
+        使用配置中的规则过滤传感器数据。
+        如果和过滤规则匹配，则丢弃它。
+
+        :param SensorData sensor_data: 要检查的SensorData对象
+        :rtype bool: 如果为True，说明被丢弃；如果为False，说明未被丢弃
+        """
+
+        if not isinstance(sensor_data, SensorData):
+            raise TypeError("sensor_data: %s is not a SensorData instance" % str(sensor_data))
+
+        is_dropped = False
+
+        for data_filter in self.config.filters:
+            # Check "apply_on_sensor_type"
+            if (data_filter["apply_on_sensor_type"] != "*") and (data_filter["apply_on_sensor_type"] != sensor_data.sensor_type):
+                continue
+
+            # Check "apply_on_sensor_id"
+            if (data_filter["apply_on_sensor_id"] != "*") and (data_filter["apply_on_sensor_id"] != sensor_data.sensor_id):
+                continue
+
+            # Check method and threshold
+            if (data_filter["comparing_method"] == "greater_than") and (sensor_data.raw_value > data_filter["threshold"]):
+                is_dropped = True
+                break
+            if (data_filter["comparing_method"] == "less_than") and (sensor_data.raw_value < data_filter["threshold"]):
+                is_dropped = True
+                break
+
+        return is_dropped
 
     def apply_config(self, new_config, load_old_config=False):
         """
@@ -160,7 +194,8 @@ class Node(object):
 
         self.bottle.route("/node/nodeconfig/<node_id>", method="POST", callback=self.post_node_config)
         self.bottle.route("/node/nodeconfig/<node_id>", method="GET", callback=self.get_node_config)
-        self.bottle.route("/node/sensordata/<sensor_id>", method="GET", callback=self.get_sensor_data)
+        self.bottle.route("/node/sensordata/<node_id>/<sensor_id>", method="GET", callback=self.get_sensor_data)
+        self.bottle.route("/node/warningdata/<node_id>/<sensor_id>", method="GET", callback=self.get_warning_data)
 
         self.bottle.run(
             host=self.config.node_host,
@@ -234,15 +269,19 @@ class Node(object):
         # 2. 返回node_config:
         return self.config.get_json_string()
 
-    def get_sensor_data(self, sensor_id):
+    def get_sensor_data(self, node_id, sensor_id):
         """
-        处理GET /node/sensordata/<sensor_id>。
+        处理GET /node/sensordata/<node_id>/<sensor_id>。
         以Json形式返回传感器数据。
         如果请求错误或出现异常，返回HTTP 500。
 
         :param sensor_id: URL中的<sensor_id>部分。
         """
-        # 1. 查找sensor_id相符的SensorThread对象:
+        # 1. 检查node_id:
+        if node_id != self.config.node_id:
+            return generate_500("Cannot find node with node_id='%s'" % node_id)
+
+        # 2. 查找sensor_id相符的SensorThread对象:
         for x in self.sensor_threads:
             if sensor_id == x.sensor_id:
                 sensor_thread = x
@@ -250,8 +289,31 @@ class Node(object):
         else:
             return generate_500("Cannot find sensor with sensor_id='%s'" % sensor_id)
 
-        # 2. 从该传感器读数据
+        # 3. 从该传感器读数据
         return sensor_thread.get_json_dumps_sensor_data()
+
+    def get_warning_data(self, node_id, sensor_id):
+        """
+        处理GET /node/warningdata/<node_id>/<sensor_id>。
+        如果传感器值超过阈值，则返回它；否则返回空200。
+        如果请求错误或出现异常，返回HTTP 500。
+        """
+
+        if node_id != self.config.node_id:
+            return generate_500("Cannot find node with node_id='%s'" % node_id)
+
+        for x in self.sensor_threads:
+            if sensor_id == x.sensor_id:
+                sensor_thread = x
+                break
+        else:
+            return generate_500("Cannot find sensor with sensor_id='%s'" % node_id)
+
+        sensor_data = sensor_thread.get_data()
+        if not self.filter_sensor_data(sensor_data):
+            return sensor_data.get_json_dumps()
+        else:
+            return  # 空的HTTP 200
 
 
 class ServerMonitor(threading.Thread):
@@ -281,8 +343,8 @@ class ServerMonitor(threading.Thread):
         request_url = str("http://%s:%d/server/regnode" % (self.server_addr, self.server_port))
         curl = pycurl.Curl()
         curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-        curl.setopt(pycurl.TIMEOUT, 30)
+        curl.setopt(pycurl.CONNECTTIMEOUT, 5)
+        curl.setopt(pycurl.TIMEOUT, 10)
         curl.setopt(pycurl.POSTFIELDS, self.node.config.get_json_string())
         curl.perform()
         # todo 处理异常
@@ -295,8 +357,8 @@ class ServerMonitor(threading.Thread):
         request_url = str("http://%s:%d/server/unregnode" % (self.server_addr, self.server_port))
         curl = pycurl.Curl()
         curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-        curl.setopt(pycurl.TIMEOUT, 30)
+        curl.setopt(pycurl.CONNECTTIMEOUT, 5)
+        curl.setopt(pycurl.TIMEOUT, 10)
         curl.setopt(pycurl.POSTFIELDS, self.node.config.get_json_string())
         curl.perform()
         # todo 处理异常
@@ -312,8 +374,8 @@ class ServerMonitor(threading.Thread):
         try:
             curl = pycurl.Curl()
             curl.setopt(pycurl.URL, request_url)
-            curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-            curl.setopt(pycurl.TIMEOUT, 30)
+            curl.setopt(pycurl.CONNECTTIMEOUT, 5)
+            curl.setopt(pycurl.TIMEOUT, 10)
             curl.perform()
             if curl.getinfo(pycurl.HTTP_CODE) == 500:
                 self.unreg_to_server()
@@ -362,9 +424,18 @@ class SensorThread(threading.Thread):
         # 导入传感器驱动module
         sensor_module = import_module("pinic.sensor.sensor_" + self.sensor_type)
         self.sensor = sensor_module.Sensor(self.sensor_id, self.sensor_desc, sensor_config)
+        """ :type: pinic.sensor.basesensor.BaseSensor """
 
         # 设置停止事件
         self.stop_event = threading.Event()
+
+    def get_data(self):
+        """
+        读取传感器数据(SensorData)并返回SensorData对象。
+
+        :rtype: SensorData
+        """
+        return self.sensor.get_data()
 
     def get_json_dumps_sensor_data(self):
         """

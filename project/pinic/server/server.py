@@ -89,6 +89,7 @@ from pinic.server.serverconfig import ServerConfig
 from pinic.server.serverconfig import parse_from_string as parse_server_config_from_string
 from pinic.util import generate_500
 from pinic.node.nodeconfig import parse_from_string as parse_node_config_from_string
+from pinic.node.nodeconfig import NodeConfig
 from bottle import Bottle, request, redirect, static_file
 from StringIO import StringIO
 from time import time
@@ -185,15 +186,11 @@ class Server(object):
 
         self.bottle.route("/server/knownnodes/<server_id>", method="GET", callback=self.get_known_nodes)
 
-        # URL路由，静态页面部分
-        self.bottle.route("/", method="GET", callback=lambda: redirect("/static/index.html"))
-        self.bottle.route("/static/<filename>", method="GET", callback=lambda filename: static_file(filename, root="static/server/"))
-
         self.bottle.run(
             host=self.config.server_host,
             port=self.config.server_port,
             server="gevent"
-        )  # TODO 使用Node时加锁
+        )  # TODO 使用Server时加锁
 
     def restart_bottle(self):
         """
@@ -223,7 +220,7 @@ class Server(object):
             logging.debug("[Server.remove_known_node] removing node with node_id=%s" % node_id)
             self.known_nodes.remove(node_to_remove)
 
-    def add_known_node(self, node_addr, node_port, node_id, node_desc):
+    def add_known_node(self, node_addr, node_port, node_id, node_desc, node_config):
         """
         添加一个Node到已知Node列表。如果已经有相同ID的Node存在，则覆盖它/它们。
 
@@ -234,7 +231,7 @@ class Server(object):
         """
         logging.debug("[Server.add_known_node] adding node with node_id=%s" % node_id)
         self.remove_known_node(node_id)
-        self.known_nodes.append(NodeInfo(node_addr, node_port, node_id, node_desc))
+        self.known_nodes.append(NodeInfo(node_addr, node_port, node_id, node_desc, node_config))
 
     def refresh_node_alive(self, node_id):
         """
@@ -268,7 +265,7 @@ class Server(object):
         node_port = node_config.node_port
         node_id = node_config.node_id
         node_desc = node_config.node_desc
-        self.add_known_node(node_addr, node_port, node_id, node_desc)
+        self.add_known_node(node_addr, node_port, node_id, node_desc, node_config)
         return
 
     def post_unreg_node(self):
@@ -428,9 +425,9 @@ class Server(object):
 
         node = self.find_node_by_id(node_id)
         if node is None:
-            return generate_500("Cannot find node with node_id='%s' from this server" & node_id)
+            return generate_500("Cannot find node with node_id='%s' from this server" % node_id)
 
-        request_url = str("http://%s:%d/node/sensordata/%s" % (node.addr, node.port, sensor_id))
+        request_url = str("http://%s:%d/node/sensordata/%s/%s" % (node.addr, node.port, node_id, sensor_id))
         curl_buffer = StringIO()
         try:
             curl = pycurl.Curl()
@@ -479,7 +476,11 @@ class Server(object):
 
 
 class NodeMonitor(threading.Thread):
-    """Node监视线程，定期检查已知Node的最后存活时间，如果超出限制则从已知Node列表中清除Node"""
+    """
+    Node监视线程，定期检查已知Node的最后存活时间，
+    如果超出限制则从已知Node列表中清除Node。
+    如果没有超出，则向它请求所有Sensor是否超过警报阈值。
+    """
 
     def __init__(self, server):
         """
@@ -493,6 +494,36 @@ class NodeMonitor(threading.Thread):
         self.check_interval = 10.0  # 秒，检查间隔
         self.stop_event = threading.Event()  # 设置停止事件
 
+    def check_warning(self, node_info):
+        """
+        检查一个Node的所有Sensor是否超过警报阈值。如果有，发送数据给forwarder。
+
+        :param NodeInfo node_info: node to check
+        """
+        # 对node的每一个传感器……
+        for sensor in node_info.config.sensors:
+            request_url = "http://%s:%d/node/warningdata/%s/%s" % (node_info.addr, node_info.port, node_info.id, sensor["sensor_id"])
+            try:
+                # 检查是否有警报
+                curl_buffer = StringIO()
+                curl = pycurl.Curl()
+                curl.setopt(pycurl.URL, request_url)
+                curl.setopt(pycurl.WRITEDATA, curl_buffer)
+                curl.setopt(pycurl.CONNECTTIMEOUT, 5)
+                curl.setopt(pycurl.TIMEOUT, 10)
+                curl.perform()
+                # 有警报数据，发送给forwarder
+                if len(curl_buffer.getvalue()) > 0:
+                    request_url = "http://%s:%d/forwarder/warningdata" % (self.server.config.forwarder_addr, self.server.config.forwarder_port)
+                    curl = pycurl.Curl()
+                    curl.setopt(pycurl.URL, request_url)
+                    curl.setopt(pycurl.POSTFIELDS, curl_buffer.getvalue())
+                    curl.perform()
+            except pycurl.error as e:
+                # todo handle?
+                logging.debug("[Exception on check_warning]"+ str(e))
+                pass
+
     def run(self):
         """
         检查Server中各个已知Node的最后存活时间是否超出max_live_interval，如果超过，将它从已知的node列表中去除。
@@ -503,6 +534,8 @@ class NodeMonitor(threading.Thread):
             for n in self.server.known_nodes:
                 if time() - n.last_active_time > self.max_live_interval:
                     self.server.remove_known_node(n.id)
+                else:
+                    self.check_warning(n)
             logging.debug("[NodeMonitor.run] done. remain: %d known nodes." % len(self.server.known_nodes))
 
     def stop(self):
@@ -543,7 +576,6 @@ class ForwarderMonitor(threading.Thread):
         curl.setopt(pycurl.TIMEOUT, 30)
         curl.setopt(pycurl.POSTFIELDS, self.server.config.get_json_string())
         curl.perform()
-        # todo 建立反向隧道
 
     def unreg_to_forwarder_destory_tunnel(self):
         """
@@ -557,13 +589,6 @@ class ForwarderMonitor(threading.Thread):
         curl.setopt(pycurl.TIMEOUT, 30)
         curl.setopt(pycurl.POSTFIELDS, self.server.config.get_json_string())
         curl.perform()
-        # todo 关闭反向隧道
-
-    def check_reverse_tunnel(self):
-        """
-        检查反向隧道是否可用。
-        """
-        pass  # todo
 
     def send_keep_server(self):
         """
@@ -579,7 +604,7 @@ class ForwarderMonitor(threading.Thread):
             curl.setopt(pycurl.CONNECTTIMEOUT, 10)
             curl.setopt(pycurl.TIMEOUT, 30)
             curl.perform()
-            if curl.getinfo(pycurl.HTTP_CODE) == '500':
+            if curl.getinfo(pycurl.HTTP_CODE) == 500:
                 self.unreg_to_forwarder_destory_tunnel()
                 self.reg_to_forwarder_establish_tunnel()
         except Exception as e:
@@ -593,7 +618,7 @@ class ForwarderMonitor(threading.Thread):
         """
         while not self.stop_event.wait(self.keep_alive_interval):
             self.send_keep_server()
-            self.check_reverse_tunnel()
+            # self.check_reverse_tunnel()
 
     def stop(self):
         self.stop_event.set()
@@ -606,18 +631,20 @@ class NodeInfo(object):
     新建NodeInfo对象时，last_active_time默认为当前时间。
     """
 
-    def __init__(self, addr, port, id, desc, last_active_time=None):
+    def __init__(self, addr, port, id, desc, config, last_active_time=None):
         """
         :param basestring addr: node address
         :param int port: node port
         :param basestring id: node id
         :param basestring desc: node desc
+        :param NodeConfig config: node config
         :param float last_active_time: last active timestamp
         """
         self.addr = addr
         self.port = port
         self.id = id
         self.desc = desc
+        self.config = config
         if last_active_time is None:
             self.last_active_time = time()
         else:
@@ -636,14 +663,3 @@ class NodeInfo(object):
             "desc": self.desc,
             "last_active_time": self.last_active_time
         }
-
-
-def run_server():
-    """
-    运行Server。请使用runserver.py调用。
-
-    :rtype: Server
-    """
-    from serverconfig import parse_from_file
-    default_config = parse_from_file("config/server.conf")
-    return Server(default_config)
