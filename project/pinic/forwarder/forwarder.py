@@ -7,14 +7,14 @@ from gevent import monkey
 monkey.patch_all()
 import logging
 import threading
-import pycurl
+import grequests
+from requests.exceptions import RequestException
 from pinic.forwarder.forwarderconfig import ForwarderConfig
 from pinic.forwarder.forwarderconfig import parse_from_string as parse_forwarder_config_from_string
 from pinic.util import generate_500
 from pinic.server.serverconfig import parse_from_string as parse_server_config_from_string
 from pinic.server.serverconfig import ServerConfig
 from bottle import Bottle, request, redirect, static_file
-from StringIO import StringIO
 from time import time
 from json import dumps
 
@@ -151,26 +151,22 @@ class Forwarder(object):
 
         # 3. send
         try:
-            curl_buffer = StringIO()
-            curl = pycurl.Curl()
-            curl.setopt(pycurl.URL, request_url)
             if request.method == "POST":
-                curl.setopt(pycurl.POSTFIELDS, request.body.read())
-            curl.setopt(pycurl.WRITEDATA, curl_buffer)
-            curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-            curl.setopt(pycurl.TIMEOUT, 30)
-            curl.perform()
-        except pycurl.error as e:
+                greq = grequests.post(request_url, data=request.body.read())
+            else:
+                greq = grequests.get(request_url)
+            response = greq.send()
+        except RequestException as e:
             return generate_500("Error on curling to server.", e)
 
         # 4. throw response back
-        http_code = curl.getinfo(pycurl.HTTP_CODE)
+        http_code = response.status_code
         if http_code == 500:
-            return generate_500("Curling to server get 500. Response: %s", curl_buffer.getvalue())
+            return generate_500("Curling to server get 500. Response: %s", response.text)
         elif http_code == 200:
-            return curl_buffer.getvalue()
+            return response.text
         else:
-            return generate_500("Got unknown HTTP code: %d response: %s" % (http_code, curl_buffer.getvalue()))
+            return generate_500("Got unknown HTTP code: %d response: %s" % (http_code, response.text))
 
     def post_reg_server(self):
         body = request.body.read()

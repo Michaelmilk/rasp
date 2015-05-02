@@ -84,14 +84,14 @@ from gevent import monkey
 monkey.patch_all()
 import logging
 import threading
-import pycurl
+import grequests
+from requests.exceptions import RequestException
 from pinic.server.serverconfig import ServerConfig
 from pinic.server.serverconfig import parse_from_string as parse_server_config_from_string
 from pinic.util import generate_500
 from pinic.node.nodeconfig import parse_from_string as parse_node_config_from_string
 from pinic.node.nodeconfig import NodeConfig
-from bottle import Bottle, request, redirect, static_file
-from StringIO import StringIO
+from bottle import Bottle, request
 from time import time
 from json import dumps
 
@@ -364,17 +364,12 @@ class Server(object):
 
         request_url = str("http://%s:%d/node/nodeconfig/%s" % (node.addr, node.port, node.id))
         try:
-            curl_buffer = StringIO()
-            curl = pycurl.Curl()
-            curl.setopt(pycurl.URL, request_url)
-            curl.setopt(pycurl.WRITEDATA, curl_buffer)
-            curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-            curl.setopt(pycurl.TIMEOUT, 30)
-            curl.perform()
-        except pycurl.error as e:
+            greq = grequests.get(request_url)
+            response = greq.send()
+        except RequestException as e:
             return generate_500("Error on curling config from node.", e)
 
-        return curl_buffer.getvalue()
+        return response.text
 
     def post_node_config(self, server_id, node_id):
         """
@@ -397,19 +392,13 @@ class Server(object):
             return generate_500("Cannot find node with node_id='%s' from this server" % node_id)
 
         request_url = str("http://%s:%d/node/nodeconfig/%s" % (node.addr, node.port, node.id))
-        curl_buffer = StringIO()
         try:
-            curl = pycurl.Curl()
-            curl.setopt(pycurl.URL, request_url)
-            curl.setopt(pycurl.POSTFIELDS, request.body.read())
-            curl.setopt(pycurl.WRITEDATA, curl_buffer)
-            curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-            curl.setopt(pycurl.TIMEOUT, 30)
-            curl.perform()
-        except pycurl.error as e:
+            greq = grequests.post(request_url, data=request.body.read())
+            response = greq.send()
+        except RequestException as e:
             return generate_500("Error on sending config to node.", e)
 
-        return curl_buffer.getvalue()
+        return response.text
 
     def get_sensor_data(self, server_id, node_id, sensor_id):
         """
@@ -428,18 +417,13 @@ class Server(object):
             return generate_500("Cannot find node with node_id='%s' from this server" % node_id)
 
         request_url = str("http://%s:%d/node/sensordata/%s/%s" % (node.addr, node.port, node_id, sensor_id))
-        curl_buffer = StringIO()
         try:
-            curl = pycurl.Curl()
-            curl.setopt(pycurl.URL, request_url)
-            curl.setopt(pycurl.WRITEDATA, curl_buffer)
-            curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-            curl.setopt(pycurl.TIMEOUT, 30)
-            curl.perform()
-        except pycurl.error as e:
+            greq = grequests.get(request_url)
+            response = greq.send()
+        except RequestException as e:
             return generate_500("Error on sending config to node.", e)
 
-        return curl_buffer.getvalue()
+        return response.text
 
     def post_sensor_data(self):
         """
@@ -449,13 +433,9 @@ class Server(object):
         """
         request_url = str("http://%s:%d/forwarder/sensordata" % (self.config.forwarder_addr, self.config.forwarder_port))
         try:
-            curl = pycurl.Curl()
-            curl.setopt(pycurl.URL, request_url)
-            curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-            curl.setopt(pycurl.TIMEOUT, 30)
-            curl.setopt(pycurl.POSTFIELDS, request.body.read())
-            curl.perform()
-        except pycurl.error as e:
+            greq = grequests.post(request_url, data=request.body.read())
+            response = greq.send()
+        except RequestException as e:
             return generate_500("Error on send sensordata to forwarder.", e)
         return  # HTTP 200
 
@@ -505,23 +485,16 @@ class NodeMonitor(threading.Thread):
             request_url = "http://%s:%d/node/warningdata/%s/%s" % (node_info.addr, node_info.port, node_info.id, sensor["sensor_id"])
             try:
                 # 检查是否有警报
-                curl_buffer = StringIO()
-                curl = pycurl.Curl()
-                curl.setopt(pycurl.URL, request_url)
-                curl.setopt(pycurl.WRITEDATA, curl_buffer)
-                curl.setopt(pycurl.CONNECTTIMEOUT, 5)
-                curl.setopt(pycurl.TIMEOUT, 10)
-                curl.perform()
+                greq = grequests.get(request_url)
+                response = greq.send()
                 # 有警报数据，发送给forwarder
-                if len(curl_buffer.getvalue()) > 0:
+                if len(response.text) > 0:
                     request_url = "http://%s:%d/forwarder/warningdata" % (self.server.config.forwarder_addr, self.server.config.forwarder_port)
-                    curl = pycurl.Curl()
-                    curl.setopt(pycurl.URL, request_url)
-                    curl.setopt(pycurl.POSTFIELDS, curl_buffer.getvalue())
-                    curl.perform()
-            except pycurl.error as e:
+                    greq = grequests.post(request_url, data=response.text)
+                    response = greq.send()
+            except RequestException as e:
                 # todo handle?
-                logging.debug("[Exception on check_warning]"+ str(e))
+                logging.debug("[Exception on check_warning]" + str(e))
                 pass
 
     def run(self):
@@ -570,12 +543,11 @@ class ForwarderMonitor(threading.Thread):
         """
         logging.debug("[ForwarderMonitor.reg_to_forwarder_establish_tunnel] reg to forwarder. addr=%s, port=%d" % (self.forwarder_addr, self.forwarder_port))
         request_url = str("http://%s:%d/forwarder/regserver" % (self.forwarder_addr, self.forwarder_port))
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-        curl.setopt(pycurl.TIMEOUT, 30)
-        curl.setopt(pycurl.POSTFIELDS, self.server.config.get_json_string())
-        curl.perform()
+        try:
+            greq = grequests.post(request_url, data=self.server.config.get_json_string())
+            greq.send()
+        except RequestException as e:
+            logging.warning("[ServerMonitor.reg_to_server] reg failed. err:" + str(e))
 
     def unreg_to_forwarder_destory_tunnel(self):
         """
@@ -583,12 +555,11 @@ class ForwarderMonitor(threading.Thread):
         """
         logging.debug("[ForwarderMonitor.unreg_to_forwarder_destory_tunnel] unreg to forwarder. addr=%s, port=%d" % (self.forwarder_addr, self.forwarder_port))
         request_url = str("http://%s:%d/forwarder/unregserver" % (self.forwarder_addr, self.forwarder_port))
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-        curl.setopt(pycurl.TIMEOUT, 30)
-        curl.setopt(pycurl.POSTFIELDS, self.server.config.get_json_string())
-        curl.perform()
+        try:
+            greq = grequests.post(request_url, data=self.server.config.get_json_string())
+            greq.send()
+        except RequestException as e:
+            logging.warning("[ServerMonitor.reg_to_server] reg failed. err:" + str(e))
 
     def send_keep_server(self):
         """
@@ -599,12 +570,9 @@ class ForwarderMonitor(threading.Thread):
         logging.debug("[ForwarderMonitor.send_keep_server] sending keep_server message")
         request_url = str("http://%s:%d/forwarder/keepserver/%s" % (self.forwarder_addr, self.forwarder_port, self.server_id))
         try:
-            curl = pycurl.Curl()
-            curl.setopt(pycurl.URL, request_url)
-            curl.setopt(pycurl.CONNECTTIMEOUT, 10)
-            curl.setopt(pycurl.TIMEOUT, 30)
-            curl.perform()
-            if curl.getinfo(pycurl.HTTP_CODE) == 500:
+            greq = grequests.get(request_url)
+            response = greq.send()
+            if response.status_code == 500:
                 self.unreg_to_forwarder_destory_tunnel()
                 self.reg_to_forwarder_establish_tunnel()
         except Exception as e:

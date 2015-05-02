@@ -81,12 +81,12 @@
 		this.lineChartData = {
 			labels: [''],
 			datasets: [{
-				fillColor : "rgba(220,220,220,0.2)",
-				strokeColor : "rgba(220,220,220,1)",
-				pointColor : "rgba(220,220,220,1)",
-				pointStrokeColor : "#fff",
-				pointHighlightFill : "#fff",
-				pointHighlightStroke : "rgba(220,220,220,1)",
+	            fillColor: "rgba(151,187,205,0.2)",
+	            strokeColor: "rgba(151,187,205,1)",
+	            pointColor: "rgba(151,187,205,1)",
+	            pointStrokeColor: "#fff",
+	            pointHighlightFill: "#fff",
+	            pointHighlightStroke: "rgba(151,187,205,1)",
 				label: "Sensor ",
 				data: [100, 100]
 			}]
@@ -110,7 +110,9 @@
 			}
 			sensor.lineChartData.datasets[0].label = "Sensor " + sensor.sensorId;
 			sensor.chart = new Chart(ctx).Line(sensor.lineChartData, {
-				responsive: false
+				responsive: true,
+				bezierCurve : false,
+				animationSteps: 5
 			});
 		};
 

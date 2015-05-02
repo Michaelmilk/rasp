@@ -74,7 +74,8 @@ import logging
 import threading
 from importlib import import_module
 from bottle import Bottle, request
-import pycurl
+import grequests
+from requests.exceptions import RequestException
 from pinic.util import generate_500
 from pinic.sensor.sensordata import SensorData
 from pinic.node.nodeconfig import NodeConfig
@@ -341,13 +342,11 @@ class ServerMonitor(threading.Thread):
         """
         logging.debug("[ServerMonitor.reg_to_server] reg to server. addr=%s, port=%d" % (self.server_addr, self.server_port))
         request_url = str("http://%s:%d/server/regnode" % (self.server_addr, self.server_port))
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 5)
-        curl.setopt(pycurl.TIMEOUT, 10)
-        curl.setopt(pycurl.POSTFIELDS, self.node.config.get_json_string())
-        curl.perform()
-        # todo 处理异常
+        try:
+            greq = grequests.post(request_url, data=self.node.config.get_json_string())
+            greq.send()
+        except RequestException as e:
+            logging.warning("[ServerMonitor.reg_to_server] reg failed. err:" + str(e))
 
     def unreg_to_server(self):
         """
@@ -355,13 +354,11 @@ class ServerMonitor(threading.Thread):
         """
         logging.debug("[ServerMonitor.unreg_to_server] unreg to server. addr=%s, port=%d" % (self.server_addr, self.server_port))
         request_url = str("http://%s:%d/server/unregnode" % (self.server_addr, self.server_port))
-        curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, request_url)
-        curl.setopt(pycurl.CONNECTTIMEOUT, 5)
-        curl.setopt(pycurl.TIMEOUT, 10)
-        curl.setopt(pycurl.POSTFIELDS, self.node.config.get_json_string())
-        curl.perform()
-        # todo 处理异常
+        try:
+            greq = grequests.post(request_url, data=self.node.config.get_json_string())
+            greq.send()
+        except RequestException as e:
+            logging.warning("[ServerMonitor.reg_to_server] reg failed. err:" + str(e))
 
     def send_keep_node(self):
         """
@@ -372,12 +369,9 @@ class ServerMonitor(threading.Thread):
         logging.debug("[ServerMonitor.send_keep_node] sending keep_node message")
         request_url = str("http://%s:%d/server/keepnode/%s" % (self.server_addr, self.server_port, self.node_id))
         try:
-            curl = pycurl.Curl()
-            curl.setopt(pycurl.URL, request_url)
-            curl.setopt(pycurl.CONNECTTIMEOUT, 5)
-            curl.setopt(pycurl.TIMEOUT, 10)
-            curl.perform()
-            if curl.getinfo(pycurl.HTTP_CODE) == 500:
+            greq = grequests.get(request_url)
+            response = greq.send()
+            if response.status_code == 500:
                 self.unreg_to_server()
                 self.reg_to_server()
         except Exception as e:
