@@ -88,7 +88,7 @@
 	            pointHighlightFill: "#fff",
 	            pointHighlightStroke: "rgba(151,187,205,1)",
 				label: "Sensor ",
-				data: [100, 100]
+				data: [0]
 			}]
 		};
 
@@ -142,6 +142,14 @@
 			$interval.cancel(sensor.chartTimer);
 			sensor.isChartRunning = false;
 		};
+
+        this.clearChart = function() {
+            sensor.stopChart();
+            var len = sensor.chart.datasets[0].points.length;
+            for (var i = 0; i < len; i ++)
+                sensor.chart.removeData();
+            sensor.lineChartData.datasets[0].data = [0];
+        };
 
 	}]);
 

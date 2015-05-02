@@ -2,11 +2,13 @@
 <html ng-app="pinicClient">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="tgmerge">
     <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
     <script type="text/javascript" src="js/angular.js"></script>
     <script type="text/javascript" src="js/Chart.min.js"></script>
     <script type="text/javascript" src="js/app.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>pinic client</title>
 </head>
 
@@ -19,79 +21,109 @@
     </header>
 
     <!-- Forwarder info section -->
-    <div ng-controller="ForwarderCtrl as forwarder">
+    <div id="forwarder-div" ng-controller="ForwarderCtrl as forwarder">
         <h3>Forwarder相关</h3>
 
         <h4>Forwarder配置：</h4>
-            <blockquote><code>{{ forwarder.config }}</code></blockquote>
+            <pre>{{ forwarder.config }}</pre>
             <button class="btn btn-primary" ng-click="forwarder.getConfig()">获取Forwarder配置</button>
         <hr/>
 
         <h4>Forwarder的Server列表：</h4>
-            <blockquote><code>{{ forwarder.serverList }}</code></blockquote>
+            <pre>{{ forwarder.serverList }}</pre>
             <button class="btn btn-primary" ng-click="forwarder.listServers()">列出Forwarder的Server列表</button>
-        <hr/>
     </div>
 
+    <hr/>
+
     <!-- Server info section -->
-    <div ng-controller="ServerCtrl as server">
+    <div id="server-div" ng-controller="ServerCtrl as server">
         <h3>Server相关</h3>
 
-        <h4>要操作的Server的ID：{{ server.serverId }}</h4>
+        <div class="form-group">
+            <label>要操作的Server的ID：{{ server.serverId }}</label>
             <input type="text" class="form-control" placeholder="server_id" ng-model="server.serverId">
-        <hr/>
+        </div>
 
         <h4>Server配置：</h4>
-            <blockquote><code>{{ server.config }}</code></blockquote>
-            <button class="btn btn-primary" ng-click="server.getConfig()">获取Server配置</button>
-        <hr/>
+        <p><pre>{{ server.config }}</pre></p>
+        <button class="btn btn-primary" ng-click="server.getConfig()">获取Server配置</button>
+
+        <hr>
 
         <h4>Server的Node列表：</h4>
-            <blockquote><code>{{ server.nodeList }}</code></blockquote>
-            <button class="btn btn-primary" ng-click="server.listNodes()">列出Server的Node列表</button>
-        <hr/>
+        <pre>{{ server.nodeList }}</pre>
+        <button class="btn btn-primary" ng-click="server.listNodes()">列出Server的Node列表</button>
+
+        <hr>
+
     </div>
 
     <!-- Node info section -->
-    <div ng-controller="NodeCtrl as node">
+    <div id="node-div" ng-controller="NodeCtrl as node">
         <h3>Node相关 {{ node.serverId }}</h3>
 
-        <h4>要操作的Server的ID：{{ node.serverId }}</h4>
+        <div class="form-group">
+            <label>要操作的Server的ID：{{ node.serverId }}</label>
             <input type="text" class="form-control" placeholder="server_id" ng-model="node.serverId">
-        <h4>要操作的Node的ID：{{ node.nodeId }}</h4>
+        </div>
+
+        <div class="form-group">
+            <label>要操作的Node的ID：{{ node.nodeId }}</label>
             <input type="text" class="form-control" placeholder="node_id" ng-model="node.nodeId">
+        </div>
+
         <hr/>
 
-        <h4>Node配置：</h4>
-            <blockquote><code>{{ node.config }}</code></blockquote>
-            <button class="btn btn-primary" ng-click="node.getConfig()">获取Node配置</button>
+        <h5>Node配置：</h5>
+        <pre>{{ node.config }}</pre>
+        <button class="btn btn-primary" ng-click="node.getConfig()">获取Node配置</button>
+
         <hr/>
+
     </div>
 
     <!-- Sensor info section -->
-    <div ng-controller="SensorCtrl as sensor">
+    <div id="sensor-div" ng-controller="SensorCtrl as sensor">
         <h3>Sensor相关</h3>
 
-        <h4>要操作的Server的ID：{{ sensor.serverId }}</h4>
+        <div class="form-group">
+            <label>要操作的Server的ID：{{ sensor.serverId }}</label>
             <input type="text" class="form-control" placeholder="server_id" ng-model="sensor.serverId">
-        <h4>要操作的Node的ID：{{ sensor.nodeId }}</h4>
+        </div>
+        <div class="form-group">
+            <label>要操作的Node的ID：{{ sensor.nodeId }}</label>
             <input type="text" class="form-control" placeholder="node_id" ng-model="sensor.nodeId">
-        <h4>要操作的传感器的ID：{{ sensor.sensorId }}</h4>
+        </div>
+        <div class="form-group">
+            <label>要操作的传感器的ID：{{ sensor.sensorId }}</label>
             <input type="text" class="form-control" placeholder="node_id" ng-model="sensor.sensorId">
+        </div>
+
         <hr/>
         
-        <h4>传感器值：</h4>
-            <blockquote><code>{{ sensor.sensorData }}</code></blockquote>
-            <button class="btn btn-primary" ng-click="sensor.getSensorData()">取传感器值</button>
+        <h5>传感器值：</h5>
+        <pre>{{ sensor.sensorData }}</pre>
+        <button class="btn btn-primary" ng-click="sensor.getSensorData()">取传感器值</button>
+
         <hr/>
 
-        <h4>监控传感器：</h4>
-            <h5>时间间隔(ms)：{{ sensor.chartInterval }}</h5>
+        <h5>监控传感器：</h5>
+        <div class="form-group">
+            <label>时间间隔(ms)：{{ sensor.chartInterval }}</label>
             <input type="text" class="form-control" ng-model="sensor.chartInterval" title="">
+        </div>
+
+        <p>
             <canvas id="sensor-chart" width="400" height="200"></canvas>
-            <button class="btn btn-primary" ng-click="sensor.startChart()" ng-hide="sensor.isChartRunning">开始绘图</button>
-            <button class="btn btn-primary" ng-click="sensor.stopChart()" ng-show="sensor.isChartRunning">停止绘图</button>
+        </p>
+
+        <button class="btn btn-primary" ng-click="sensor.startChart()" ng-hide="sensor.isChartRunning">开始绘图</button>
+        <button class="btn btn-danger" ng-click="sensor.stopChart()" ng-show="sensor.isChartRunning">停止绘图</button>
+        <button class="btn btn-primary" ng-click="sensor.clearChart()" ng-hide="sensor.isChartRunning">清除图像</button>
+
         <hr/>
+
     </div>
 
 </body>
