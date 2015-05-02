@@ -2,10 +2,10 @@
 <html ng-app="pinicClient">
 
 <head>
-    <link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.min.css" />
-    <script type="text/javascript" src="angular.min.js"></script>
-    <script type="text/javascript" src="Chart.min.js"></script>
-    <script type="text/javascript" src="app.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
+    <script type="text/javascript" src="js/angular.js"></script>
+    <script type="text/javascript" src="js/Chart.min.js"></script>
+    <script type="text/javascript" src="js/app.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>pinic client</title>
 </head>
@@ -87,7 +87,7 @@
 
         <h4>监控传感器：</h4>
             <h5>时间间隔(ms)：{{ sensor.chartInterval }}</h5>
-            <input type="text" class="form-control" ng-model="sensor.chartInterval">
+            <input type="text" class="form-control" ng-model="sensor.chartInterval" title="">
             <canvas id="sensor-chart" width="400" height="200"></canvas>
             <button class="btn btn-primary" ng-click="sensor.startChart()" ng-hide="sensor.isChartRunning">开始绘图</button>
             <button class="btn btn-primary" ng-click="sensor.stopChart()" ng-show="sensor.isChartRunning">停止绘图</button>

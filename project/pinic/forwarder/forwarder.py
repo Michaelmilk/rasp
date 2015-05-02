@@ -91,7 +91,7 @@ class Forwarder(object):
 
         # 页面部分
         self.bottle.route("/", method="GET", callback=lambda: redirect("/static/index.html"))
-        self.bottle.route("/static/<path:path>", method="GET", callback=lambda path: static_file(path, root="static/forwarder/"))
+        self.bottle.route("/static/<path:path>", method="GET", callback=lambda path: static_file(path, root="static/"))
 
         self.bottle.run(
             host=self.config.forwarder_host,
