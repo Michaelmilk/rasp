@@ -119,6 +119,11 @@
 		this.addChartData = function() {
 			$http.get('/server/sensordata/' + sensor.serverId + '/' + sensor.nodeId + '/' + sensor.sensorId).success(function(data) {
 				sensor.sensorData = data;
+				if(sensor.lineChartData.datasets[0].data.length > 40) {
+					sensor.lineChartData.datasets[0].data.shift();
+					sensor.chart.removeData();
+				}
+				sensor.lineChartData.datasets[0].data.push(data.raw_value);
 				sensor.chart.addData([data.raw_value], '');
 			}).error(function(data) {
 				sensor.sensorData = data;
