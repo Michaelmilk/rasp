@@ -29,6 +29,14 @@
             <button class="btn btn-primary" ng-click="forwarder.getConfig()">获取Forwarder配置</button>
         <hr/>
 
+        <h4>更新Forwarder的配置：</h4>
+            <div class="form-group">
+                <label>新配置</label>
+                <textarea type="text" class="form-control" rows="5" ng-model="forwarder.newConfig"></textarea>
+            </div>
+            <pre>{{ forwarder.newConfigReply }}</pre>
+            <button class="btn btn-primary" ng-click="forwarder.updateConfig()">更新Forwarder配置</button>
+
         <h4>Forwarder的Server列表：</h4>
             <pre>{{ forwarder.serverList }}</pre>
             <button class="btn btn-primary" ng-click="forwarder.listServers()">列出Forwarder的Server列表</button>

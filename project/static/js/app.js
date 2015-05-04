@@ -4,6 +4,8 @@
 	app.controller('ForwarderCtrl', ['$http', function($http) {
 		
 		this.config = 'Empty';
+        this.newConfig = 'Empty';
+        this.newConfigReply = 'Empty';
 		this.serverList = 'Empty';
 		
 		var forwarder = this;
@@ -13,6 +15,14 @@
 				forwarder.config = data;
 			});
 		};
+
+        this.updateConfig = function() {
+            $http.post('/forwarder/forwarderconfig', forwarder.newConfig).success(function(data) {
+                forwarder.newConfigReply = data;
+            }).error(function(data) {
+                forwarder.newConfigReply = data;
+            });
+        };
 		
 		this.listServers = function() {
 			$http.get('/forwarder/knownservers').success(function(data) {
