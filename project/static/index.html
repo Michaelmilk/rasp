@@ -7,6 +7,7 @@
     <meta name="author" content="tgmerge">
     <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
     <script type="text/javascript" src="js/angular.js"></script>
+    <script type="text/javascript" src="js/socket.io.js"></script>
     <script type="text/javascript" src="js/Chart.min.js"></script>
     <script type="text/javascript" src="js/app.js"></script>
     <title>pinic client</title>
@@ -19,6 +20,14 @@
         <h1 class="text-center">pinic client</h1>
         <h2 class="text-center">- wow, such doge</h2>
     </header>
+
+    <div id="socket-io-test" ng-controller="SineCtrl as ctrl">
+        <label>Sine Value</label>
+        <p>
+            <canvas id="sine-chart" width="400" height="200"></canvas>
+        </p>
+        <pre>{{ ctrl.sine }}</pre>
+    </div>
 
     <!-- Forwarder info section -->
     <div id="forwarder-div" ng-controller="ForwarderCtrl as forwarder">

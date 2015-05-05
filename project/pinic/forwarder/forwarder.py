@@ -5,20 +5,34 @@ __author__ = "tgmerge"
 
 from gevent import monkey
 monkey.patch_all()
-import logging
-import threading
+from bottle import Bottle, request, redirect, static_file, ServerAdapter
 import grequests
 from requests.exceptions import RequestException
+from socketio import socketio_manage
+from socketio.namespace import BaseNamespace
+from socketio.mixins import BroadcastMixin
 from pinic.forwarder.forwarderconfig import ForwarderConfig
 from pinic.forwarder.forwarderconfig import parse_from_string as parse_forwarder_config_from_string
-from pinic.util import generate_500
 from pinic.server.serverconfig import parse_from_string as parse_server_config_from_string
-from pinic.server.serverconfig import ServerConfig
-from bottle import Bottle, request, redirect, static_file
+from pinic.util import generate_500
+import logging
+import threading
 from time import time
 from json import dumps
+import math
+from gevent import sleep
 
 logging.basicConfig(level=logging.DEBUG)
+
+class SineNamespace(BaseNamespace, BroadcastMixin):
+    def initialize(self):
+        print "INIT"
+        self.spawn(self.job_send_sine)
+
+    def job_send_sine(self):
+        while True:
+            self.broadcast_event("sine", {"value": math.sin(time())})
+            sleep(1)
 
 
 class Forwarder(object):
@@ -93,10 +107,13 @@ class Forwarder(object):
         self.bottle.route("/", method="GET", callback=lambda: redirect("/static/index.html"))
         self.bottle.route("/static/<path:path>", method="GET", callback=lambda path: static_file(path, root="static/"))
 
+        # Socket.io
+        self.bottle.route("/socket.io/<path:re:.*>", method="GET", callback=self.http_socket_io)
+
         self.bottle.run(
             host=self.config.forwarder_host,
             port=self.config.forwarder_port,
-            server="gevent"
+            server="geventSocketIO"
         )  # todo 加锁？
 
     def restart_bottle(self):
@@ -132,6 +149,9 @@ class Forwarder(object):
 
     # HTTP处理方法
     # ============
+
+    def http_socket_io(self, path):
+        socketio_manage(request.environ, {"/sine": SineNamespace}, request=request)
 
     def post_warning_data(self):
         # todo

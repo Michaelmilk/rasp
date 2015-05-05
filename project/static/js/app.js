@@ -1,6 +1,80 @@
 (function(){
 	var app = angular.module('pinicClient', []);
 
+    app.factory('$socketio', function($rootScope) {
+        var socket = io.connect('/sine');
+        return {
+            on: function(eventName, callback) {
+                socket.on(eventName, function() {
+                    var args = arguments;
+                    $rootScope.$apply(function() {
+                        callback.apply(socket, args);
+                    });
+                });
+            },
+            emit: function(eventName, data, callback) {
+                socket.emit(eventName, data, function() {
+                    var args = arguments;
+                    $rootScope.$apply(function() {
+                        if (callback) {
+                            callback.apply(socket, args);
+                        }
+                    });
+                })
+            }
+        };
+    });
+
+    app.controller('SineCtrl', ['$socketio', function($socketio) {
+
+        this.sine = 'waiting';
+        this.chart = null;
+		this.lineChartData = {
+			labels: [''],
+			datasets: [{
+	            fillColor: "rgba(151,187,205,0.2)",
+	            strokeColor: "rgba(151,187,205,1)",
+	            pointColor: "rgba(151,187,205,1)",
+	            pointStrokeColor: "#fff",
+	            pointHighlightFill: "#fff",
+	            pointHighlightStroke: "rgba(151,187,205,1)",
+				label: "Sensor ",
+				data: [0]
+			}]
+		};
+
+        var ctrl = this;
+
+        this.initChart = function() {
+			var ctx = document.getElementById('sine-chart').getContext('2d');
+			if(ctrl.chart != null) {
+				ctrl.chart.clear();
+			}
+			ctrl.lineChartData.datasets[0].label = "Sensor " + ctrl.sensorId;
+			ctrl.chart = new Chart(ctx).Line(ctrl.lineChartData, {
+				responsive: true,
+				bezierCurve : false,
+				animationSteps: 5
+			});
+		};
+
+		this.addChartData = function(data) {
+            if(ctrl.lineChartData.datasets[0].data.length > 40) {
+                ctrl.lineChartData.datasets[0].data.shift();
+                ctrl.chart.removeData();
+            }
+            ctrl.lineChartData.datasets[0].data.push(data);
+            ctrl.chart.addData([data], '');
+		};
+
+        $socketio.on('sine', function(data) {
+            ctrl.sine = data.value;
+            ctrl.addChartData(data.value);
+        });
+
+        this.initChart()
+    }]);
+
 	app.controller('ForwarderCtrl', ['$http', function($http) {
 		
 		this.config = 'Empty';
