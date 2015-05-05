@@ -2,7 +2,8 @@
 	var app = angular.module('pinicClient', []);
 
     app.factory('$socketio', function($rootScope) {
-        var socket = io.connect('/sine');
+        var socket = io.connect('/warning');
+        var status = "Connected";
         return {
             on: function(eventName, callback) {
                 socket.on(eventName, function() {
@@ -25,54 +26,19 @@
         };
     });
 
-    app.controller('SineCtrl', ['$socketio', function($socketio) {
+    app.controller('WarningCtrl', ['$socketio', function($socketio) {
 
-        this.sine = 'waiting';
-        this.chart = null;
-		this.lineChartData = {
-			labels: [''],
-			datasets: [{
-	            fillColor: "rgba(151,187,205,0.2)",
-	            strokeColor: "rgba(151,187,205,1)",
-	            pointColor: "rgba(151,187,205,1)",
-	            pointStrokeColor: "#fff",
-	            pointHighlightFill: "#fff",
-	            pointHighlightStroke: "rgba(151,187,205,1)",
-				label: "Sensor ",
-				data: [0]
-			}]
-		};
+        this.warningText = 'Empty';
+        this.socketStatus = 'Unconnected';
+        this.socketStatus = $socketio.status;
 
-        var ctrl = this;
+        var warning = this;
 
-        this.initChart = function() {
-			var ctx = document.getElementById('sine-chart').getContext('2d');
-			if(ctrl.chart != null) {
-				ctrl.chart.clear();
-			}
-			ctrl.lineChartData.datasets[0].label = "Sensor " + ctrl.sensorId;
-			ctrl.chart = new Chart(ctx).Line(ctrl.lineChartData, {
-				responsive: true,
-				bezierCurve : false,
-				animationSteps: 5
-			});
-		};
-
-		this.addChartData = function(data) {
-            if(ctrl.lineChartData.datasets[0].data.length > 40) {
-                ctrl.lineChartData.datasets[0].data.shift();
-                ctrl.chart.removeData();
-            }
-            ctrl.lineChartData.datasets[0].data.push(data);
-            ctrl.chart.addData([data], '');
-		};
-
-        $socketio.on('sine', function(data) {
-            ctrl.sine = data.value;
-            ctrl.addChartData(data.value);
+        $socketio.on('warning', function(data) {
+            info = JSON.parse(data.data);
+            time = new Date(info.timestamp * 1000);
+            warning.warningText = "[" + time.toString().split(' ')[4] + "] " + info.sensor_id + " -> " + info.raw_value + "\n" + warning.warningText;
         });
-
-        this.initChart()
     }]);
 
 	app.controller('ForwarderCtrl', ['$http', function($http) {
@@ -137,7 +103,6 @@
 		this.serverId = '';
 		this.nodeId = '';
 		this.config = 'Empty';
-		console.log(this.config + 'config');
 
 		var node = this;
 

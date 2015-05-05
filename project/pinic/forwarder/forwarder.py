@@ -19,20 +19,25 @@ import logging
 import threading
 from time import time
 from json import dumps
-import math
-from gevent import sleep
 
 logging.basicConfig(level=logging.DEBUG)
 
-class SineNamespace(BaseNamespace, BroadcastMixin):
-    def initialize(self):
-        print "INIT"
-        self.spawn(self.job_send_sine)
 
-    def job_send_sine(self):
-        while True:
-            self.broadcast_event("sine", {"value": math.sin(time())})
-            sleep(1)
+class WarningNamespace(BaseNamespace, BroadcastMixin):
+
+    # All alive sockets:
+    connections = {}
+    """ :type: dict[int, WarningNamespace] """
+
+    def initialize(self):
+        WarningNamespace.connections[id(self)] = self
+        print "Socket.io - Init WarningNamespace, current %d alive" % len(WarningNamespace.connections)
+        super(WarningNamespace, self).initialize()
+
+    def disconnect(self, silent=False):
+        del WarningNamespace.connections[id(self)]
+        print "Socket.io - Disconnect WarningNamespace, current %d alive" % len(WarningNamespace.connections)
+        super(WarningNamespace, self).disconnect(silent)
 
 
 class Forwarder(object):
@@ -98,8 +103,6 @@ class Forwarder(object):
 
         self.bottle.route("/forwarder/warningdata", method="POST", callback=self.post_warning_data)
 
-        # self.bottle.route("/forwarder/warningdata", method="GET", callback=self.get_warning_data)
-
         self.bottle.route("/server/<request_method>/<server_id>", method=["GET", "POST"], callback=self.server_method)
         self.bottle.route("/server/<request_method>/<server_id>/<other_ids:path>", method=["GET", "POST"], callback=self.server_method)
 
@@ -151,11 +154,16 @@ class Forwarder(object):
     # ============
 
     def http_socket_io(self, path):
-        socketio_manage(request.environ, {"/sine": SineNamespace}, request=request)
+        socketio_manage(request.environ, {"/warning": WarningNamespace}, request=request)
 
     def post_warning_data(self):
-        # todo
-        return
+        warning_data = request.body.read()
+
+        # 向SocketIO的WarningNamespace发送广播
+        for connection in WarningNamespace.connections.values():
+            # double check, todo ADD LOCK
+            if isinstance(connection, WarningNamespace):
+                connection.emit("warning", {"data": warning_data})
 
     def server_method(self, request_method, server_id, other_ids=None):
         # 1. find server
