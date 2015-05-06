@@ -38,6 +38,7 @@
             info = JSON.parse(data.data);
             time = new Date(info.timestamp * 1000);
             warning.warningText = "[" + time.toString().split(' ')[4] + "] " + info.sensor_id + " -> " + info.raw_value + "\n" + warning.warningText;
+            warning.warningText = warning.warningText.split("\n").slice(0, 10).join("\n")
         });
     }]);
 
@@ -118,28 +119,24 @@
 
 	app.controller('SensorCtrl', ['$http', '$interval', function($http, $interval) {
 
-		this.serverId = 'TEST-SERVER-1';
-		this.nodeId = 'TEST-NODE-1';
-		this.sensorId = 'TEST-SENSOR-STUB-2';
+		this.serverId = 'SERVER-RPi-01';
+		this.nodeId = 'NODE-RPi-01';
+		this.sensorId = 'TLC1549';
 		this.sensorData = 'Empty';
 
-		this.chart = null;
+		this.chartInterval = 2000;
+
+        this.chart = null;
+        this.chartDOM = null;
 		this.isChartRunning = false;
 		this.chartTimer = null;
-		this.chartInterval = 2000;
-		this.lineChartData = {
-			labels: [''],
-			datasets: [{
-	            fillColor: "rgba(151,187,205,0.2)",
-	            strokeColor: "rgba(151,187,205,1)",
-	            pointColor: "rgba(151,187,205,1)",
-	            pointStrokeColor: "#fff",
-	            pointHighlightFill: "#fff",
-	            pointHighlightStroke: "rgba(151,187,205,1)",
-				label: "Sensor ",
-				data: [0]
-			}]
-		};
+        this.chartData = [[new Date(), 0]];
+
+        this.chartOptions = {
+            drawPoints: true,
+            showRoller: true,
+            labels: ['Time', 'SensorValue']
+        };
 
 
 		var sensor = this;
@@ -153,27 +150,25 @@
 		};
 
 		this.initChart = function() {
-			var ctx = document.getElementById('sensor-chart').getContext('2d');
-			if(sensor.chart != null) {
-				sensor.chart.clear();
+            sensor.chartDOM = document.getElementById('sensor-chart');
+            if(sensor.chart != null) {
+				sensor.chart.destroy();
 			}
-			sensor.lineChartData.datasets[0].label = "Sensor " + sensor.sensorId;
-			sensor.chart = new Chart(ctx).Line(sensor.lineChartData, {
-				responsive: true,
-				bezierCurve : false,
-				animationSteps: 5
-			});
+			sensor.chart = new Dygraph(sensor.chartDOM, sensor.chartData, sensor.chartOptions);
+            sensor.chartOptions.labels[1] = sensor.sensorId;
 		};
 
 		this.addChartData = function() {
 			$http.get('/server/sensordata/' + sensor.serverId + '/' + sensor.nodeId + '/' + sensor.sensorId).success(function(data) {
 				sensor.sensorData = data;
-				if(sensor.lineChartData.datasets[0].data.length > 40) {
-					sensor.lineChartData.datasets[0].data.shift();
-					sensor.chart.removeData();
-				}
-				sensor.lineChartData.datasets[0].data.push(data.raw_value);
-				sensor.chart.addData([data.raw_value], '');
+                var x = new Date(data.timestamp * 1000);
+                var y = data.raw_value;
+                sensor.chartData.push([x, y]);
+                if (sensor.chartData.length > 100) {
+                    sensor.chartData.shift();
+                }
+                console.log(sensor.chartData);
+                sensor.chart.updateOptions({'file': sensor.chartData});
 			}).error(function(data) {
 				sensor.sensorData = data;
 			});
@@ -194,10 +189,10 @@
 
         this.clearChart = function() {
             sensor.stopChart();
-            var len = sensor.chart.datasets[0].points.length;
-            for (var i = 0; i < len; i ++)
-                sensor.chart.removeData();
-            sensor.lineChartData.datasets[0].data = [0];
+            sensor.chartData = [];
+            if (sensor.chart != null) {
+                sensor.chart.updateOptions({'file': sensor.chartData}, false);
+            }
         };
 
 	}]);
