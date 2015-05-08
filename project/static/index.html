@@ -16,9 +16,18 @@
     <script type="text/javascript" src="js/app.js"></script>
     <title>pinic client</title>
     <style type="text/css">
-        #sensor-chart .c3-line-y {
-            stroke-width: 2px;
+        #sensor-chart-container {
+            position: relative;
+            height: 300px;
         }
+        #sensor-chart {
+            position: absolute;
+            left: 0;
+            right: 16px;
+            top: 16px;
+            bottom: 16px;
+        }
+
     </style>
 </head>
 
@@ -34,13 +43,9 @@
         <h3>控制</h3>
         <button class="btn btn-primary" ng-click="listDevices()">列出设备</button>
         <button class="btn btn-primary" ng-click="stopChart()">停止绘图</button>
+        <button class="btn btn-primary" ng-click="clearChart()">清除图像</button>
     </div>
-<!--
-    <div id="chart-section-div" ng-controller="ChartCtrl as chart">
-        <h3>图像</h3>
-        <div id="chart-div"></div>
-    </div>
--->
+
     <div id="devices-section-div" ng-controller="DevicesCtrl as devices">
         <h3>设备列表</h3>
         <div ng-show="deviceData.forwarder">
@@ -76,50 +81,14 @@
                 <input title="" type="text" class="form-control" ng-model="chartInterval" ng-hide="isChartRunning">
             </div>
         </form>
-        <p><div id="sensor-chart"></div></p>
-    </div>
 
-    <!-- Sensor info section -->
-    <div id="sensor-div" ng-controller="SensorCtrl as sensor">
-        <h3>Sensor相关</h3>
+        <p></p>
 
-        <div class="form-group">
-            <label>要操作的Server的ID：{{ sensor.serverId }}</label>
-            <input type="text" class="form-control" placeholder="server_id" ng-model="sensor.serverId">
+        <div class="panel panel-default">
+            <div id="sensor-chart-container" class="panel-body">
+                <div id="sensor-chart"></div>
+            </div>
         </div>
-        <div class="form-group">
-            <label>要操作的Node的ID：{{ sensor.nodeId }}</label>
-            <input type="text" class="form-control" placeholder="node_id" ng-model="sensor.nodeId">
-        </div>
-        <div class="form-group">
-            <label>要操作的传感器的ID：{{ sensor.sensorId }}</label>
-            <input type="text" class="form-control" placeholder="node_id" ng-model="sensor.sensorId">
-        </div>
-
-        <hr/>
-
-        <h5>传感器值：</h5>
-        <pre>{{ sensor.sensorData }}</pre>
-        <button class="btn btn-primary" ng-click="sensor.getSensorData()">取传感器值</button>
-
-        <hr/>
-
-        <h5>监控传感器：</h5>
-        <div class="form-group">
-            <label>时间间隔(ms)：{{ sensor.chartInterval }}</label>
-            <input type="text" class="form-control" ng-model="sensor.chartInterval" title="">
-        </div>
-
-        <p>
-            <div id="sensor-chart-dy" style></div>
-        </p>
-
-        <button class="btn btn-primary" ng-click="sensor.startChart()" ng-hide="sensor.isChartRunning">开始绘图</button>
-        <button class="btn btn-danger" ng-click="sensor.stopChart()" ng-show="sensor.isChartRunning">停止绘图</button>
-        <button class="btn btn-primary" ng-click="sensor.clearChart()" ng-hide="sensor.isChartRunning">清除图像</button>
-
-        <hr/>
-
     </div>
 
     <div id="devices-config-section-div" ng-controller="DeviceConfigCtrl as config">
