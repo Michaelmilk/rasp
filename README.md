@@ -18,5 +18,4 @@
 * AngularJS 1.3.15
 * Socket.IO 0.9.17
     - 1.0 以上的版本会出错
-* C3.js 0.4.10
-* D3.js 3.5.5
+* dyGraphs 1.1.0

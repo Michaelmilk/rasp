@@ -210,6 +210,10 @@
 
         $scope.stopChart = function() {
             chartService.stop();
+        };
+
+        $scope.clearChart = function() {
+            chartService.clear();
         }
     }]);
 
@@ -262,40 +266,25 @@
 
     app.controller('ChartCtrl', ['$scope', '$http', '$interval', 'chartService', function($scope, $http, $interval, chartService) {
 
+        var colorSet = ['#97BBCD'];
+
         $scope.chartOptions = {
-            bindto: '#sensor-chart',
-            legend: {
-                show: false
-            },
-            transition: {
-                duration: 0
-            },
-            axis: {
-                x: {
-                    type: 'timeseries',
-                    tick: {
-                        format: '%I:%M:%S',
-                        count: 3
-                    }
-                }
-            },
-            data: {
-                //type: 'spline',
-                x: 'x',
-                columns: [
-                    ['x', 0],
-                    ['y', 0]
-                ]
-            }
+            drawPoints: true,
+            labels: ['Time', 'Sensor'],
+            legend: 'follow',
+            drawGrid: false,
+            fillGraph: true,
+            strokeWidth: 2.5,
+            colors: colorSet
         };
 
         $scope.chart = null;
+        $scope.chartDOM = null;
         $scope.isChartRunning = false;
         $scope.chartTimer = null;
-        $scope.dataX = [];
-        $scope.dataY = [];
-
+        $scope.chartData = [[new Date(), 0]];
         $scope.chartInterval = 500;
+
         $scope.serverId = '';
         $scope.nodeId = '';
         $scope.sensorId = '';
@@ -315,35 +304,24 @@
 
         $scope.addChartData = function() {
             $http.get('/server/sensordata/' + $scope.serverId + '/' + $scope.nodeId + '/' + $scope.sensorId).success(function(data) {
-                $scope.dataX.push(new Date(data.timestamp * 1000));
-                $scope.dataY.push(data.raw_value);
-                if ($scope.dataX.length > 40) {
-                    $scope.dataX.shift();
-                    $scope.dataY.shift();
+                var x = new Date(data.timestamp * 1000);
+                var y = data.raw_value;
+                $scope.chartData.push([x, y]);
+                if ($scope.chartData.length > 40) {
+                    $scope.chartData.shift();
                 }
-                $scope.chart.load({
-                    columns: [
-                        ['x'].concat($scope.dataX),
-                        ['y'].concat($scope.dataY)
-                    ]
-                });
+                $scope.chart.updateOptions({'file': $scope.chartData});
             });
         };
 
         $scope.initChart = function() {
+            $scope.chartDOM = document.getElementById('sensor-chart');
             if ($scope.chart != null) {
                 $scope.chart.destroy();
             }
-
-            $scope.dataX = [];
-            $scope.dataY = [];
-
-            for(var i = 0; i < 40; i ++) {
-                $scope.dataX.push(new Date());
-                $scope.dataY.push(0);
-            }
-
-            $scope.chart = c3.generate($scope.chartOptions);
+            $scope.chartData = [[new Date(), 0]];
+            $scope.chart = new Dygraph($scope.chartDOM, $scope.chartData, $scope.chartOptions);
+            $scope.chartOptions.labels[1] = $scope.sensorId;
         };
 
         $scope.startChart = function() {
@@ -363,10 +341,9 @@
 
         $scope.clearChart = function() {
             $scope.stopChart();
-            $scope.dataX = [];
-            $scope.dataY = [];
             if ($scope.chart != null) {
-                $scope.chart.destroy();
+                $scope.chartData = [[new Date(), 0]];
+                $scope.chart.updateOptions({'file': $scope.chartData});
             }
         };
 
@@ -386,86 +363,4 @@
             warning.warningText = warning.warningText.split("\n").slice(0, 10).join("\n")
         });
     }]);
-
-
-    app.controller('SensorCtrl', ['$http', '$interval', function($http, $interval) {
-
-		this.serverId = 'SERVER-RPi-01';
-		this.nodeId = 'NODE-RPi-01';
-		this.sensorId = 'TLC1549';
-		this.sensorData = 'Empty';
-
-		this.chartInterval = 2000;
-
-        this.chart = null;
-        this.chartDOM = null;
-		this.isChartRunning = false;
-		this.chartTimer = null;
-        this.chartData = [[new Date(), 0]];
-
-        this.chartOptions = {
-            drawPoints: true,
-            showRoller: true,
-            labels: ['Time', 'SensorValue']
-        };
-
-
-		var sensor = this;
-
-		this.getSensorData = function() {
-			$http.get('/server/sensordata/' + sensor.serverId + '/' + sensor.nodeId + '/' + sensor.sensorId).success(function(data) {
-				sensor.sensorData = data;
-			}).error(function(data) {
-				sensor.sensorData = data;
-			});
-		};
-
-		this.initChart = function() {
-            sensor.chartDOM = document.getElementById('sensor-chart-dy');
-            if(sensor.chart != null) {
-				sensor.chart.destroy();
-			}
-			sensor.chart = new Dygraph(sensor.chartDOM, sensor.chartData, sensor.chartOptions);
-            sensor.chartOptions.labels[1] = sensor.sensorId;
-		};
-
-		this.addChartData = function() {
-			$http.get('/server/sensordata/' + sensor.serverId + '/' + sensor.nodeId + '/' + sensor.sensorId).success(function(data) {
-				sensor.sensorData = data;
-                var x = new Date(data.timestamp * 1000);
-                var y = data.raw_value;
-                sensor.chartData.push([x, y]);
-                if (sensor.chartData.length > 100) {
-                    sensor.chartData.shift();
-                }
-                console.log(sensor.chartData);
-                sensor.chart.updateOptions({'file': sensor.chartData});
-			}).error(function(data) {
-				sensor.sensorData = data;
-			});
-		};
-
-		this.startChart = function() {
-			if (sensor.chart == null) {
-				sensor.initChart()
-			}
-			sensor.chartTimer = $interval(sensor.addChartData, sensor.chartInterval);
-			sensor.isChartRunning = true;
-		};
-
-		this.stopChart = function() {
-			$interval.cancel(sensor.chartTimer);
-			sensor.isChartRunning = false;
-		};
-
-        this.clearChart = function() {
-            sensor.stopChart();
-            sensor.chartData = [];
-            if (sensor.chart != null) {
-                sensor.chart.updateOptions({'file': sensor.chartData}, false);
-            }
-        };
-
-	}]);
-
 })();
