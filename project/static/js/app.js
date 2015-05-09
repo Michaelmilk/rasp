@@ -114,7 +114,8 @@
         srv.newSensor = function(sensorId) {
             return {
                 type: 'sensor',
-                id: sensorId
+                id: sensorId,
+                raw_value: ''
             };
         };
         srv.newNode = function(nodeId) {
@@ -148,6 +149,7 @@
         srv.addSensorToNode = function(sensor, node) {
             node.sensors.push(sensor);
         };
+
 
         srv.updateSubDevicesOfNode = function(server, node) {
 			node.sensors = [];
