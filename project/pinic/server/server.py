@@ -93,7 +93,7 @@ from pinic.node.nodeconfig import parse_from_string as parse_node_config_from_st
 from pinic.node.nodeconfig import NodeConfig
 from bottle import Bottle, request
 from time import time
-from json import dumps
+from json import dumps, loads
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -490,7 +490,10 @@ class NodeMonitor(threading.Thread):
                 # 有警报数据，发送给forwarder
                 if len(response.text) > 0:
                     request_url = "http://%s:%d/forwarder/warningdata" % (self.server.config.forwarder_addr, self.server.config.forwarder_port)
-                    greq = grequests.post(request_url, data=response.text)
+                    warning_json_obj = loads(response.text)
+                    warning_json_obj["node"] = node_info.get_dict()
+                    warning_json_obj["server"] = self.server.config.server_id
+                    greq = grequests.post(request_url, data=dumps(warning_json_obj))
                     response = greq.send()
             except RequestException as e:
                 # todo handle?
