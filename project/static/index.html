@@ -6,103 +6,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="author" content="tgmerge">
     <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
-    <link rel="stylesheet" type="text/css" href="css/c3.css" />
-    <script type="text/javascript" src="js/lib/d3.js"></script>
-    <script type="text/javascript" src="js/lib/c3.min.js"></script>
     <script type="text/javascript" src="js/lib/dygraph-combined-dev.js"></script>
-    <script type="text/javascript" src="js/lib/Chart.min.js"></script>
     <script type="text/javascript" src="js/lib/angular.js"></script>
-    <script type="text/javascript" src="js/lib/socket.io.js"></script>
-    <script type="text/javascript" src="js/app.js"></script>
+    <script type="text/javascript" src="js/pinicClient.js"></script>
     <title>pinic client</title>
-    <style type="text/css">
-        #sensor-chart-container {
-            position: relative;
-            height: 300px;
-        }
-        #sensor-chart {
-            position: absolute;
-            left: 0;
-            right: 16px;
-            top: 16px;
-            bottom: 16px;
-        }
-
-    </style>
 </head>
-
 <body class="container">
 
-    <!-- Header -->
-    <header>
-        <h1 class="text-center">pinic client</h1>
-        <h2 class="text-center">- wow, such doge</h2>
-    </header>
+<!-- Header -->
+<header>
+    <h1 class="text-center">pinic client</h1>
+    <h2 class="text-center">- wow, such doge</h2>
+</header>
 
-    <div id="control-section-div" ng-controller="ControlCtrl as control">
-        <h3>控制</h3>
-        <button class="btn btn-primary" ng-click="listDevices()">列出设备</button>
-        <button class="btn btn-primary" ng-click="stopChart()">停止绘图</button>
-        <button class="btn btn-primary" ng-click="clearChart()">清除图像</button>
+<div id="devices-section-div" ng-controller="DeviceTreeCtrl as tree">
+    <h3>列表</h3>
+    <div ng-show="deviceData.forwarder">
+        <strong>{{ deviceData.forwarder.deviceType }}</strong> {{ deviceData.forwarder.config.id }} / {{ deviceData.forwarder.config.desc }} / {{ deviceData.forwarder.config.addr}} / {{ deviceData.forwarder.config.port }}
     </div>
-
-    <div id="devices-section-div" ng-controller="DevicesCtrl as devices">
-        <h3>设备列表</h3>
-        <div ng-show="deviceData.forwarder">
-            <strong>{{ deviceData.forwarder.type }}</strong> {{ deviceData.forwarder.id }}
-            <a href="" ng-click="selectToConfig('forwarder', deviceData.forwarder.id)">配置</a>
-        </div>
-        <ul>
-            <li ng-repeat="server in deviceData.forwarder.servers">
-                <strong>{{ server.type }}</strong> {{ server.id }}
-                <a href="" ng-click="selectToConfig('server', deviceData.forwarder.id, server.id)">配置</a>
-                <ul>
-                    <li ng-repeat="node in server.nodes">
-                        <strong>{{ node.type }}</strong> {{ node.id }}
-                        <a href="" ng-click="selectToConfig('node', deviceData.forwarder.id, server.id, node.id)">配置</a>
-                        <ul>
-                            <li ng-repeat="sensor in node.sensors">
-                                <strong>{{ sensor.type }}</strong> {{ sensor.id }}
-                                <a href="" ng-click="selectToDraw(deviceData.forwarder.id, server.id, node.id, sensor.id)">曲线</a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-            </li>
-        </ul>
-    </div>
-
-    <div id="chart-section-div" ng-controller="ChartCtrl as chart">
-        <h3>监控</h3>
-        <p>目标传感器： {{ sensorId }}</p>
-        <form class="form-inline">
-            <div class="form-group">
-                <span>时间间隔(ms)： <span ng-show="isChartRunning">{{ chartInterval }}</span></span>
-                <input title="" type="text" class="form-control" ng-model="chartInterval" ng-hide="isChartRunning">
-            </div>
-        </form>
-
-        <p></p>
-
-        <div class="panel panel-default">
-            <div id="sensor-chart-container" class="panel-body">
-                <div id="sensor-chart"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="devices-config-section-div" ng-controller="DeviceConfigCtrl as config">
-        <h3>设备配置</h3>
-        <p>目标设备：<strong>{{ deviceType }}</strong></p>
-        <pre>{{ forwarderId }}<span ng-show="serverId">\</span>{{ serverId }}<span ng-show="nodeId">\</span>{{ nodeId }}</pre>
-        <label>当前配置：</label>
-        <pre>{{ currentConfig }}</pre>
-    </div>
-
-    <div id="warning-div" ng-controller="WarningCtrl as warning">
-        <h3>警报信息</h3>
-        <pre>{{ warning.warningText }}</pre>
-    </div>
+    <ul>
+        <li ng-repeat="server in deviceData.forwarder.servers">
+            <strong>{{ server.deviceType }}</strong> {{ server.config.id }} / {{ server.config.desc }} / {{ server.config.addr }} / {{ server.config.port }}
+            <ul>
+                <li ng-repeat="node in server.nodes">
+                    <strong>{{ node.deviceType }}</strong> {{ node.config.id }} / {{ node.config.desc }} / {{ node.config.addr }} / {{ node.config.port }}
+                    <ul>
+                        <li ng-repeat="sensor in node.sensors">
+                            <strong>{{ sensor.deviceType }}</strong> {{ sensor.config.id }} / {{ sensor.config.desc }} / {{ sensor.config.type }} / {{ sensor.config.value }}
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</div>
 
 </body>
 </html>
