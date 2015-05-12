@@ -1,18 +1,10 @@
 /**
  * Created by tgmerge on 5/9.
  */
+'use strict';
 
 (function() {
     var app = angular.module('pinicClient', []);
-
-        app.service('constSrv', function() {
-       return {
-           TYPE_FORWARDER: 'FORWARDER',
-           TYPE_SERVER: 'SERVER',
-           TYPE_NODE: 'NODE',
-           TYPE_SENSOR: 'SENSOR'
-       };
-    });
 
     app.service('apiSrv', ['$http', function($http) {
         var srv = {};
@@ -56,12 +48,19 @@
         return srv;
     }]);
 
-    app.service('devicesSrv', ['apiSrv', 'constSrv', function(apiSrv, constSrv) {
+    app.service('devicesSrv', ['apiSrv', function(apiSrv) {
         var srv = {};
+
+        srv.const = {
+            TYPE_FORWARDER: 'FORWARDER',
+            TYPE_SERVER: 'SERVER',
+            TYPE_NODE: 'NODE',
+            TYPE_SENSOR: 'SENSOR'
+        };
 
         srv.newSensor = function() {
             return {
-                deviceType: constSrv.TYPE_SENSOR,
+                deviceType: srv.const.TYPE_SENSOR,
                 config: {
                     id: '',
                     type: '',
@@ -73,7 +72,7 @@
 
         srv.newNode = function() {
             return {
-                deviceType: constSrv.TYPE_NODE,
+                deviceType: srv.const.TYPE_NODE,
                 config: {
                     id: '',
                     addr: '',
@@ -86,7 +85,7 @@
 
         srv.newServer = function() {
             return {
-                deviceType: constSrv.TYPE_SERVER,
+                deviceType: srv.const.TYPE_SERVER,
                 config: {
                     id: '',
                     addr: '',
@@ -99,7 +98,7 @@
 
         srv.newForwarder = function() {
             return {
-                deviceType: constSrv.TYPE_FORWARDER,
+                deviceType: srv.const.TYPE_FORWARDER,
                 config: {
                     id: '',
                     addr: '',
@@ -180,7 +179,6 @@
         // Forwarder.config.id, addr, etc should be already set
         srv.updateForwarderAndChild = function(forwarder) {
             forwarder.servers = [];
-            console.log('here');
             apiSrv.getKnownServersOfForwarder(function(data) {
                 // success
                 for (var i = 0; i < data.length; i ++) {
@@ -219,12 +217,338 @@
         return srv;
     }]);
 
-    app.controller('DeviceTreeCtrl', ['devicesSrv', '$scope', function(devicesSrv, self) {
+
+    app.service('broadcastSrv', ['$rootScope', function($rootScope) {
+        var srv = {};
+
+        srv.msgs = {};
+
+        srv.const = {
+            JUMP_PAGE: 'JUMP_PAGE',
+            SHOW_SUBTREE: 'SHOW_SUBTREE',
+            SHOW_CONFIG: 'SHOW_CONFIG',
+            SHOW_CHART: 'SHOW_CHART',
+            SHOW_WARNING: 'SHOW_WARNING',
+            REFRESH_TREE: 'REFRESH_TREE'
+        };
+
+        srv.sayJumpPage = function(toPageNo) {
+            srv.msgs[srv.const.JUMP_PAGE] = {
+                toPageNo: toPageNo
+            };
+            $rootScope.$broadcast(srv.const.JUMP_PAGE);
+        };
+
+        // to get 'toPageNo', use
+        //     broadcastSrv.msgs[broadcastSrv.const.JUMP_PAGE].toPageNo
+        srv.onJumpPage = function(callback) {
+            $rootScope.$on(srv.const.JUMP_PAGE, callback);
+        };
+
+        srv.sayShowSubtree = function(server) {
+            srv.msgs[srv.const.SHOW_SUBTREE] = {
+                server: server
+            };
+            $rootScope.$broadcast(srv.const.SHOW_SUBTREE);
+        };
+
+        // to get 'server', use
+        //     broadcastSrv.msgs[broadcastSrv.const.SHOW_SUBTREE].server
+        srv.onShowSubtree = function(callback) {
+            $rootScope.$on(srv.const.SHOW_SUBTREE, callback);
+        };
+
+        srv.sayShowConfig = function(deviceType, fId, sId, nId, senId) {
+            srv.msgs[srv.const.SHOW_CONFIG] = {
+                deviceType: deviceType,
+                fId: fId,
+                sId: sId,
+                nId: nId,
+                senId: senId
+            };
+            $rootScope.$broadcast(srv.const.SHOW_CONFIG);
+        };
+
+        srv.onShowConfig = function(callback) {
+            $rootScope.$on(srv.const.SHOW_CONFIG, callback);
+        };
+
+        // timeInterval - ms
+        srv.sayShowChart = function(sId, nId, senId, timeInterval) {
+            srv.msgs[srv.const.SHOW_CHART] = {
+                sId: sId,
+                nId: nId,
+                senId: senId,
+                timeInterval: timeInterval
+            };
+            $rootScope.$broadcast(srv.const.SHOW_CHART);
+        };
+
+        srv.onShowChart = function(callback) {
+            $rootScope.$on(srv.const.SHOW_CHART, callback);
+        };
+
+        srv.sayShowWarning = function(deviceType, fId, sId, nId, senId, value) {
+            srv.msgs[srv.const.SHOW_WARNING] = {
+                deviceType: deviceType,
+                fId: fId,
+                sId: sId,
+                nId: nId,
+                senId: senId,
+                value: value
+            };
+            $rootScope.$broadcast(srv.const.SHOW_WARNING);
+        };
+
+        srv.onShowWarning = function(callback) {
+            $rootScope.$on(srv.const.SHOW_WARNING, callback);
+        };
+
+        srv.sayRefreshTree = function() {
+            srv.msgs[srv.const.REFRESH_TREE] = {};
+            $rootScope.$broadcast(srv.const.REFRESH_TREE);
+        };
+
+        srv.onRefreshTree = function(callback) {
+            $rootScope.$on(srv.const.REFRESH_TREE, callback);
+        };
+
+        return srv;
+    }]);
+
+    app.service('socketIO', function($rootScope) {
+        var socket = io.connect('/warning');
+        return {
+            on: function(eventName, callback) {
+                socket.on(eventName, function() {
+                    var args = arguments;
+                    $rootScope.$apply(function() {
+                        callback.apply(socket, args);
+                    });
+                });
+            },
+            emit: function(eventName, data, callback) {
+                socket.emit(eventName, data, function() {
+                    var args = arguments;
+                    $rootScope.$apply(function() {
+                        if (callback) {
+                            callback.apply(socket, args);
+                        }
+                    });
+                })
+            }
+        };
+    });
+
+    app.controller('DeviceTreeCtrl', ['devicesSrv', 'broadcastSrv', '$scope', function(devicesSrv, broadcastSrv, self) {
 
         self.deviceData = {};
 
-        devicesSrv.updateDevices(self.deviceData);
+        // --- Function of controller
 
+        self.refreshTree = function() {
+            devicesSrv.updateDevices(self.deviceData);
+        };
+
+        self.showServerInDeviceList = function(server) {
+            broadcastSrv.sayShowSubtree(server);
+        };
+
+        // ---
+
+        self.refreshTree();
+    }]);
+
+    app.controller('DeviceListCtrl', ['broadcastSrv', '$scope', function(broadcastSrv, self) {
+
+        self.server = {};
+
+        // --- Function of controller
+
+        // server is a 'server' object in deviceData of devicesSrv.
+        // it will be DEEP COPIED to this controller.
+        self.loadSubTree = function(server) {
+            self.server = angular.copy(server);
+        };
+
+        self.removeWarning = function(device) {
+            if (device != undefined) {
+                device.isWarning = false;
+            }
+        };
+
+        self.toSensorChart = function(sId, nId, senId) {
+            broadcastSrv.sayShowChart(sId, nId, senId, 500);
+        };
+
+        // --- Broadcast listener
+
+        broadcastSrv.onShowSubtree(function() {
+            self.loadSubTree(broadcastSrv.msgs[broadcastSrv.const.SHOW_SUBTREE].server);
+        });
+
+        broadcastSrv.onShowWarning(function() {
+            var msg = angular.copy(broadcastSrv.msgs[broadcastSrv.const.SHOW_WARNING]);
+            var sId = msg.sId;
+            var nId = msg.nId;
+            var senId = msg.senId;
+            var value = msg.value;
+            if (typeof(self.server.config) !== 'undefined' && sId === self.server.config.id) {
+                self.server.isWarning = true;
+            }
+            var nodes = self.server.nodes;
+            for (var i = 0; i < nodes.length; i ++) {
+                var node = nodes[i];
+                if (nId === node.config.id) {
+                    node.isWarning = true;
+                    var sensors = node.sensors;
+                    for (var j = 0; j < sensors.length; j ++) {
+                        var sensor = sensors[j];
+                        if (senId === sensor.config.id) {
+                            sensor.isWarning = true;
+                        }
+                    }
+                }
+            }
+        });
+
+    }]);
+
+    app.controller('WarningCtrl', ['socketIO', 'broadcastSrv', '$scope', function(socketIO, broadcastSrv, self) {
+
+        self.warningText = 'Empty';
+
+        // --- Function of controller
+
+        self.highlightDevice = function(sId, nId, senId, value) {
+            broadcastSrv.sayShowWarning(null, null, sId, nId, senId, value)
+        };
+
+        socketIO.on('warning', function(data) {
+            var info = JSON.parse(data.data);
+            var time = new Date(info.timestamp * 1000);
+            self.highlightDevice(info.server, info.node.id, info.sensor_id, info.raw_value);
+            self.warningText = '[' + time.toString().split(' ')[4] + ']' + '\n'
+                + '  Server:' +  info.server + ', Node:' + info.node.id + ', Sensor:' + info.sensor_id + '\n'
+                + '  Value:' + info.raw_value
+                + '\n' + self.warningText;
+            self.warningText = self.warningText.split('\n').slice(0, 10).join('\n');
+        });
+    }]);
+
+    app.controller('ChartCtrl', ['apiSrv', 'broadcastSrv', '$interval', '$scope', function(apiSrv, broadcastSrv, $interval, self) {
+
+        self.colorSet = ['#97BBCD'];
+
+        self.chartOptions = {
+            drawPoints: true,
+            labels: ['时间', '传感器'],
+            legend: 'follow',
+            drawGrid: false,
+            fillGraph: true,
+            strokeWidth: 2.0,
+            colors: self.colorSet
+        };
+
+        self.chart = null;
+        self.chartDOM = null;
+        self.isInitialized = false;
+        self.isChartRunning = false;
+        self.chartTimer = null;
+        self.chartData = [[new Date(), 0]];
+        self.chartInterval = 500;
+
+        self.serverId = '';
+        self.nodeId = '';
+        self.sensorId = '';
+
+        // --- Function of controller
+
+        self.addChartPoint = function() {
+            apiSrv.getSensorData(self.serverId, self.nodeId, self.sensorId, function(data) {
+                // success
+                // todo load some parsing module and parse the raw value
+                var x = new Date(data.timestamp * 1000);
+                var y = data.raw_value;
+
+                self.chartData.push([x, y]);
+                if (self.chartData.length > 40) {
+                    self.chartData.shift();
+                }
+                self.chart.updateOptions({
+                    'file': self.chartData
+                });
+            }, function(data) {
+                // fail
+
+            });
+        };
+
+        self.initChart = function(serverId, nodeId, sensorId, timeInterval) {
+            self.serverId = serverId;
+            self.nodeId = nodeId;
+            self.sensorId = sensorId;
+            self.chartInterval = timeInterval;
+
+            self.chartDOM = document.getElementById('sensor-chart');
+            if (self.chart != null) {
+                self.chart.destroy();
+            }
+            self.chartData = [[new Date(), 0]];
+            self.chart = new Dygraph(self.chartDOM, self.chartData, self.chartOptions);
+            self.chartOptions.labels[1] = self.sensorId;
+            self.isInitialized = true;
+        };
+
+        // should 'initChart' first
+        self.startChart = function() {
+            if (self.isInitialized !== true) {
+                return;
+            }
+            if (self.chartTimer != null) {
+                self.stopChart();
+            }
+            self.chartTimer = $interval(self.addChartPoint, self.chartInterval);
+            self.isChartRunning = true;
+        };
+
+        // should 'initChart' first
+        self.stopChart = function() {
+            if (self.isInitialized !== true) {
+                return;
+            }
+            if (self.chartTimer != null) {
+                $interval.cancel(self.chartTimer);
+                self.chartTimer = null;
+            }
+            self.isChartRunning = false;
+        };
+
+        // should 'initChart' first
+        self.clearChart = function() {
+            if (self.isInitialized !== true) {
+                return;
+            }
+            self.stopChart();
+            if (self.chart != null) {
+                self.chartData = [[new Date(), 0]];
+                self.chart.updateOptions({
+                    'file': self.chartData
+                });
+            }
+            self.serverId = null;
+            self.nodeId = null;
+            self.sensorId = null;
+            self.isInitialized = false;
+        };
+
+        // --- Broadcast listener
+        broadcastSrv.onShowChart(function() {
+            var msg = broadcastSrv.msgs[broadcastSrv.const.SHOW_CHART];
+            self.clearChart();
+            self.initChart(msg.sId, msg.nId, msg.senId, msg.timeInterval);
+            self.startChart();
+        });
     }]);
 
 })();
