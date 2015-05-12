@@ -217,13 +217,19 @@
         return srv;
     }]);
 
-
     app.service('broadcastSrv', ['$rootScope', function($rootScope) {
         var srv = {};
 
         srv.msgs = {};
 
         srv.const = {
+            // device type, used in show_config broadcast
+            DEVICE_FORWARDER: 'FORWARDER',
+            DEVICE_SERVER: 'SERVER',
+            DEVICE_NODE: 'NODE',
+            DEVICE_SENSOR: 'SENSOR',
+
+            // broadcast type
             JUMP_PAGE: 'JUMP_PAGE',
             SHOW_SUBTREE: 'SHOW_SUBTREE',
             SHOW_CONFIG: 'SHOW_CONFIG',
@@ -549,6 +555,90 @@
             self.initChart(msg.sId, msg.nId, msg.senId, msg.timeInterval);
             self.startChart();
         });
+    }]);
+
+    app.controller('ForwarderConfigCtrl', ['apiSrv', 'broadcastSrv', '$scope', function(apiSrv, broadcastSrv, self) {
+        self.currentConfig = {
+            host: '',
+            port: '',
+            id: '',
+            desc: ''
+        };
+
+        self.newConfig = {
+            host: '',
+            port: '',
+            id: '',
+            desc: ''
+        };
+
+        self.newConfigStr = '';
+
+        self.isSentSuccess = false;
+        self.sentSuccessMsg = '';
+        self.isSentError = false;
+        self.sentErrorMsg = '';
+
+        // --- Function of controller
+
+        // Object --> self.currentConfig
+        self.setCurrentConfig = function(config) {
+            if (config !== null && typeof config === 'object') {
+                self.currentConfig.host = config.forwarder_host;
+                self.currentConfig.port = config.forwarder_port;
+                self.currentConfig.id = config.forwarder_id;
+                self.currentConfig.desc = config.forwarder_desc;
+            }
+        };
+
+        // self.newConfig --> string
+        self.convertNewConfig = function() {
+            self.newConfigStr = JSON.stringify(self.newConfig);
+            return JSON.stringify(self.newConfig);
+        };
+
+        self.loadConfig = function() {
+            apiSrv.getForwarderConfig(function(data) {
+                // success
+                self.setCurrentConfig(data);
+            }, function(data) {
+                // error
+
+            });
+        };
+
+        self.sendConfig = function() {
+            apiSrv.setForwarderConfig(self.convertNewConfig(), function(data) {
+                self.isSentSuccess = true;
+                self.sentSuccessMsg = data;
+                self.setCurrentConfig(data);
+                broadcastSrv.sayRefreshTree();
+            }, function(data) {
+                self.isSentError = true;
+                self.sentErrorMsg = data;
+                broadcastSrv.sayRefreshTree();
+            });
+        };
+
+        self.clearSuccessStat = function() {
+            self.isSentSuccess = false;
+        };
+
+        self.clearErrorStat = function() {
+            self.isSentError = false;
+        };
+
+        // --- Listener of broadcast
+
+        broadcastSrv.onShowConfig(function() {
+            var msg = broadcastSrv.msgs[broadcastSrv.const.SHOW_CONFIG];
+            if (msg.deviceType !== broadcastSrv.const.DEVICE_FORWARDER) {
+                return;
+            }
+            self.loadConfig();
+        });
+
+        self.loadConfig();
     }]);
 
 })();
