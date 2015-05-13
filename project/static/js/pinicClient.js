@@ -732,4 +732,8 @@
             self.loadConfig(msg.sId);
         });
     }]);
+
+    app.controller('NodeConfigCtrl', ['apiSrv', 'broadcastSrv', '$scope', function(spiSrv, broadcastSrv, self) {
+
+    }]);
 })();

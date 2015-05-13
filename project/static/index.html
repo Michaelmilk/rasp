@@ -31,7 +31,7 @@
         <li ng-repeat="server in deviceData.forwarder.servers">
             <strong>{{ server.deviceType }}</strong> {{ server.config.id }} / {{ server.config.desc }} / {{ server.config.addr }} / {{ server.config.port }}
             <a href="" ng-click="showServerInDeviceList(server)">显示详情</a>
-            <a href="" ng-click="showForwarderConfig(server.config.id)">配置</a>
+            <a href="" ng-click="showServerConfig(server.config.id)">配置</a>
         </li>
     </ul>
 </div>
@@ -81,25 +81,25 @@
     <form class="form-horizontal">
         <h4>当前配置</h4>
         <div class="form-group">
-            <label class="col-sm-2 control-label">ID</label>
+            <label class="col-sm-2 control-label">Forwarder ID</label>
             <div class="col-sm-10">
                 <input type="text" class="form-control" ng-value="currentConfig.forwarder_id" readonly>
             </div>
         </div>
         <div class="form-group">
-            <label class="col-sm-2 control-label">描述</label>
+            <label class="col-sm-2 control-label">Forwarder描述</label>
             <div class="col-sm-10">
                 <input type="text" class="form-control" ng-value="currentConfig.forwarder_desc" readonly>
             </div>
         </div>
         <div class="form-group">
-            <label class="col-sm-2 control-label">主机</label>
+            <label class="col-sm-2 control-label">Forwarder主机</label>
             <div class="col-sm-10">
                 <input type="text" class="form-control" ng-value="currentConfig.forwarder_host" readonly>
             </div>
         </div>
         <div class="form-group">
-            <label class="col-sm-2 control-label">端口</label>
+            <label class="col-sm-2 control-label">Forwarder端口</label>
             <div class="col-sm-10">
                 <input type="number" class="form-control" ng-value="currentConfig.forwarder_port" readonly>
             </div>
@@ -109,25 +109,25 @@
     <form class="form-horizontal" name="forwarderNewConfigForm">
         <h4>更新配置</h4>
         <div class="form-group">
-            <label class="col-sm-2 control-label">ID</label>
+            <label class="col-sm-2 control-label">Forwarder ID</label>
             <div class="col-sm-10">
                 <input type="text" class="form-control" ng-model="newConfig.forwarder_id" required>
             </div>
         </div>
         <div class="form-group">
-            <label class="col-sm-2 control-label">描述</label>
+            <label class="col-sm-2 control-label">Forwarder描述</label>
             <div class="col-sm-10">
                 <input type="text" class="form-control" ng-model="newConfig.forwarder_desc" required>
             </div>
         </div>
         <div class="form-group">
-            <label class="col-sm-2 control-label">主机</label>
+            <label class="col-sm-2 control-label">Forwarder主机</label>
             <div class="col-sm-10">
                 <input type="text" class="form-control" ng-model="newConfig.forwarder_host" required>
             </div>
         </div>
         <div class="form-group">
-            <label class="col-sm-2 control-label">端口</label>
+            <label class="col-sm-2 control-label">Forwarder端口</label>
             <div class="col-sm-10">
                 <input type="number" class="form-control" ng-model="newConfig.forwarder_port" required>
             </div>
@@ -140,7 +140,89 @@
 
 
 <div id="server-config-section-div" ng-controller="ServerConfigCtrl as server">
+    <h3>Server配置</h3>
+    <form class="form-horizontal">
+        <h4>当前配置</h4>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">连接到Forwarder地址</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-value="currentConfig.forwarder_addr" readonly>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">连接到Forwarder端口</label>
+            <div class="col-sm-10">
+                <input type="number" class="form-control" ng-value="currentConfig.forwarder_port" readonly>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Server ID</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-value="currentConfig.server_id" readonly>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Server描述</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-value="currentConfig.server_desc" readonly>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Server主机</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-value="currentConfig.server_host" readonly>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Server端口</label>
+            <div class="col-sm-10">
+                <input type="number" class="form-control" ng-value="currentConfig.server_port" readonly>
+            </div>
+        </div>
+    </form>
 
+    <form class="form-horizontal" name="serverNewConfigForm">
+        <h4>更新配置</h4>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">连接到Forwarder地址</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.forwarder_addr">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">连接到Forwarder端口</label>
+            <div class="col-sm-10">
+                <input type="number" class="form-control" ng-model="newConfig.forwarder_port">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Server ID</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.server_id">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Server 描述</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.server_desc">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Server 主机</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.server_host">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Server 端口</label>
+            <div class="col-sm-10">
+                <input type="number" class="form-control" ng-model="newConfig.server_port">
+            </div>
+        </div>
+        <div class="form-group">
+            <button type="button" class="btn btn-primary center-block" ng-click="sendConfig()" ng-disable="serverNewConfigForm.$invalid">更新配置</button>
+        </div>
+    </form>
 </div>
 <!--
 <div id="node-config-section-div" ng-controller="NodeConfigCtrl as node">
