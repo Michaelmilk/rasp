@@ -360,7 +360,19 @@
             broadcastSrv.sayShowSubtree(server);
         };
 
-        // ---
+        self.showForwarderConfig = function() {
+            broadcastSrv.sayShowConfig(broadcastSrv.const.DEVICE_FORWARDER);
+        };
+
+        self.showServerConfig = function(sId) {
+            broadcastSrv.sayShowConfig(broadcastSrv.const.DEVICE_SERVER, null, sId);
+        };
+
+        // --- Listener of broadcast
+
+        broadcastSrv.onRefreshTree(function() {
+            self.refreshTree();
+        });
 
         self.refreshTree();
     }]);
@@ -559,18 +571,13 @@
 
     app.controller('ForwarderConfigCtrl', ['apiSrv', 'broadcastSrv', '$scope', function(apiSrv, broadcastSrv, self) {
         self.currentConfig = {
-            host: '',
-            port: '',
-            id: '',
-            desc: ''
+            forwarder_host: '',
+            forwarder_port: 0,
+            forwarder_id: '',
+            forwarder_desc: ''
         };
 
-        self.newConfig = {
-            host: '',
-            port: '',
-            id: '',
-            desc: ''
-        };
+        self.newConfig = angular.copy(self.currentConfig);
 
         self.newConfigStr = '';
 
@@ -584,15 +591,17 @@
         // Object --> self.currentConfig
         self.setCurrentConfig = function(config) {
             if (config !== null && typeof config === 'object') {
-                self.currentConfig.host = config.forwarder_host;
-                self.currentConfig.port = config.forwarder_port;
-                self.currentConfig.id = config.forwarder_id;
-                self.currentConfig.desc = config.forwarder_desc;
+                for (var key in self.currentConfig) {
+                    if (self.currentConfig.hasOwnProperty(key)) {
+                        self.currentConfig[key] = config[key];
+                    }
+                }
             }
         };
 
         // self.newConfig --> string
         self.convertNewConfig = function() {
+            self.newConfig.forwarder_port = Number(self.newConfig.forwarder_port);
             self.newConfigStr = JSON.stringify(self.newConfig);
             return JSON.stringify(self.newConfig);
         };
@@ -637,8 +646,90 @@
             }
             self.loadConfig();
         });
-
-        self.loadConfig();
     }]);
 
+    app.controller('ServerConfigCtrl', ['apiSrv', 'broadcastSrv', '$scope', function(apiSrv, broadcastSrv, self) {
+        self.currentConfig = {
+            server_host: '',
+            server_port: 0,
+            server_id: '',
+            server_desc: '',
+            forwarder_addr: '',
+            forwarder_port: 0
+        };
+
+        self.newConfig = angular.copy(self.currentConfig);
+
+        self.newConfigStr = '';
+
+        self.serverId = '';
+
+        self.isSentSuccess = false;
+        self.sentSuccessMsg = '';
+        self.isSentError = false;
+        self.sentErrorMsg = '';
+
+        // --- Function of controller
+
+        self.setCurrentConfig = function(config) {
+            if (config !== null && typeof config === 'object') {
+                for (var key in self.currentConfig) {
+                    if (self.currentConfig.hasOwnProperty(key)) {
+                        self.currentConfig[key] = config[key];
+                    }
+                }
+                self.serverId = self.currentConfig.server_id;
+            }
+        };
+
+        // self.newconfig --> string
+        self.convertNewConfig = function() {
+            self.newConfig.server_port = Number(self.newConfig.server_port);
+            self.newConfig.forwarder_port = Number(self.newConfig.forwarder_port);
+            self.newConfigStr = JSON.stringify(self.newConfig);
+            return JSON.stringify(self.newConfig);
+        };
+
+        // sId is server_id.
+        self.loadConfig = function(sId) {
+            apiSrv.getServerConfig(sId, function(data) {
+                // success
+                self.setCurrentConfig(data);
+            }, function(data) {
+                // error
+
+            });
+        };
+
+        self.sendConfig = function() {
+            apiSrv.setServerConfig(self.convertNewConfig(), self.serverId, function(data) {
+                self.isSentSuccess = true;
+                self.sentSuccessMsg = data;
+                self.setCurrentConfig(data);
+                broadcastSrv.sayRefreshTree();
+            }, function(data) {
+                self.isSentError = true;
+                self.sentErrorMsg = data;
+                broadcastSrv.sayRefreshTree();
+            });
+        };
+
+        self.clearSuccessStat = function() {
+            self.isSentSuccess = false;
+        };
+
+        self.clearErrorStat = function() {
+            self.isSentError = false;
+        };
+
+        // --- Listener of broadcast
+
+        broadcastSrv.onShowConfig(function() {
+            var msg = broadcastSrv.msgs[broadcastSrv.const.SHOW_CONFIG];
+            if (msg.deviceType !== broadcastSrv.const.DEVICE_SERVER) {
+                return;
+            }
+            self.loadConfig(msg.sId);
+        });
+    }]);
 })();
