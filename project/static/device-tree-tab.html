@@ -1,10 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head lang="en">
-    <meta charset="UTF-8">
-    <title></title>
-</head>
-<body>
-
-</body>
-</html>
+<div id="device-tree-section-div" ng-controller="DeviceTreeCtrl as tree">
+    <h3>列表</h3>
+    <div ng-show="deviceData.forwarder">
+        <strong>{{ deviceData.forwarder.deviceType }}</strong> {{ deviceData.forwarder.config.id }} / {{ deviceData.forwarder.config.desc }} / {{ deviceData.forwarder.config.addr}} / {{ deviceData.forwarder.config.port }}
+        <a href="" ng-click="showForwarderConfig()">配置</a>
+    </div>
+    <ul>
+        <li ng-repeat="server in deviceData.forwarder.servers">
+            <strong>{{ server.deviceType }}</strong> {{ server.config.id }} / {{ server.config.desc }} / {{ server.config.addr }} / {{ server.config.port }}
+            <a href="" ng-click="showServerInDeviceList(server)">显示详情</a>
+            <a href="" ng-click="showServerConfig(server.config.id)">配置</a>
+        </li>
+    </ul>
+</div>

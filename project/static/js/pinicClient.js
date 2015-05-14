@@ -6,6 +6,82 @@
 (function() {
     var app = angular.module('pinicClient', []);
 
+    app.directive('deviceTreeTab', function() {
+        return {
+            restrict: 'EA',
+            templateUrl: 'device-tree-tab.html'
+        };
+    });
+
+    app.directive('deviceListTab', function() {
+        return {
+            restrict: 'EA',
+            templateUrl: 'device-list-tab.html'
+        };
+    });
+
+    app.directive('warningTab', function() {
+        return {
+            restrict: 'EA',
+            templateUrl: 'warning-tab.html'
+        };
+    });
+
+    app.directive('chartTab', function() {
+        return {
+            restrict: 'EA',
+            templateUrl: 'chart-tab.html'
+        };
+    });
+
+    app.directive('forwarderConfigTab', function() {
+        return {
+            restrict: 'EA',
+            templateUrl: 'forwarder-config-tab.html'
+        };
+    });
+
+    app.directive('serverConfigTab', function() {
+        return {
+            restrict: 'EA',
+            templateUrl: 'server-config-tab.html'
+        };
+    });
+
+    app.directive('nodeConfigTab', function() {
+        return {
+            restrict: 'EA',
+            templateUrl: 'node-config-tab.html'
+        };
+    });
+
+    app.controller('tabController', ['tabSrv', '$scope', function(tabSrv, self) {
+        self.tabIsSet = function(checkTab) {
+            return tabSrv.tabIsSet(checkTab);
+        };
+
+        self.setTab = function(activeTab) {
+            tabSrv.setTab(activeTab);
+        };
+    }]);
+
+    app.service('tabSrv', function() {
+        var srv = {};
+
+        srv.tab = 1;
+
+        srv.tabIsSet = function(checkTab) {
+            return srv.tab === checkTab;
+        };
+
+        srv.setTab = function(activeTab) {
+            srv.tab = activeTab;
+        };
+
+        return srv;
+    });
+
+
     app.service('apiSrv', ['$http', function($http) {
         var srv = {};
 
@@ -346,7 +422,7 @@
         };
     });
 
-    app.controller('DeviceTreeCtrl', ['devicesSrv', 'broadcastSrv', '$scope', function(devicesSrv, broadcastSrv, self) {
+    app.controller('DeviceTreeCtrl', ['tabSrv', 'devicesSrv', 'broadcastSrv', '$scope', function(tabSrv, devicesSrv, broadcastSrv, self) {
 
         self.deviceData = {};
 
@@ -362,10 +438,12 @@
 
         self.showForwarderConfig = function() {
             broadcastSrv.sayShowConfig(broadcastSrv.const.DEVICE_FORWARDER);
+            tabSrv.setTab(3);
         };
 
         self.showServerConfig = function(sId) {
             broadcastSrv.sayShowConfig(broadcastSrv.const.DEVICE_SERVER, null, sId);
+            tabSrv.setTab(4);
         };
 
         // --- Listener of broadcast
@@ -377,7 +455,7 @@
         self.refreshTree();
     }]);
 
-    app.controller('DeviceListCtrl', ['broadcastSrv', '$scope', function(broadcastSrv, self) {
+    app.controller('DeviceListCtrl', ['tabSrv', 'broadcastSrv', '$scope', function(tabSrv, broadcastSrv, self) {
 
         self.server = {};
 
@@ -396,15 +474,18 @@
         };
 
         self.toSensorChart = function(sId, nId, senId) {
+            tabSrv.setTab(2);
             broadcastSrv.sayShowChart(sId, nId, senId, 500);
         };
 
         self.showServerConfig = function(sId) {
             broadcastSrv.sayShowConfig(broadcastSrv.const.DEVICE_SERVER, null, sId);
+            tabSrv.setTab(4);
         };
 
         self.showNodeConfig = function(sId, nId) {
             broadcastSrv.sayShowConfig(broadcastSrv.const.DEVICE_NODE, null, sId, nId);
+            tabSrv.setTab(5);
         };
 
         // --- Broadcast listener
@@ -465,7 +546,7 @@
         });
     }]);
 
-    app.controller('ChartCtrl', ['apiSrv', 'broadcastSrv', '$interval', '$scope', function(apiSrv, broadcastSrv, $interval, self) {
+    app.controller('ChartCtrl', ['apiSrv', 'broadcastSrv', '$interval', '$timeout', '$scope', function(apiSrv, broadcastSrv, $interval, $timeout, self) {
 
         self.colorSet = ['#97BBCD'];
 
@@ -574,9 +655,12 @@
         // --- Broadcast listener
         broadcastSrv.onShowChart(function() {
             var msg = broadcastSrv.msgs[broadcastSrv.const.SHOW_CHART];
-            self.clearChart();
-            self.initChart(msg.sId, msg.nId, msg.senId, msg.timeInterval);
-            self.startChart();
+            // avoid dygraphs issue
+            $timeout(function() {
+                self.clearChart();
+                self.initChart(msg.sId, msg.nId, msg.senId, msg.timeInterval);
+                self.startChart();
+            }, 500);
         });
     }]);
 

@@ -1,0 +1,26 @@
+<div id="device-list-section-div" ng-controller="DeviceListCtrl as list">
+    <h3>Server</h3>
+    <div ng-show="server" ng-class="{warningdevice: server.isWarning}">
+        <strong>{{ server.deviceType }}</strong> {{ server.config.id }} / {{ server.config.desc }} / {{ server.config.addr }} / {{ server.config.port }}
+        <a href="" ng-show="server.isWarning" ng-click="removeWarning(server)">取消警报</a>
+        <a href="" ng-click="showServerConfig(server.config.id)">配置</a>
+    </div>
+    <ul>
+        <li ng-repeat="node in server.nodes">
+            <div ng-class="{warningdevice: node.isWarning}">
+                <strong>{{ node.deviceType }}</strong> {{ node.config.id }} / {{ node.config.desc }} / {{ node.config.addr }} / {{ node.config.port }}
+                <a href="" ng-show="node.isWarning" ng-click="removeWarning(node)">取消警报</a>
+                <a href="" ng-click="showNodeConfig(server.config.id, node.config.id)">配置</a>
+            </div>
+            <ul>
+                <li ng-repeat="sensor in node.sensors">
+                    <div ng-class="{warningdevice: sensor.isWarning}">
+                        <strong>{{ sensor.deviceType }}</strong> {{ sensor.config.id }} / {{ sensor.config.desc }} / {{ sensor.config.type }} / {{ sensor.config.value }}
+                        <a href="" ng-click="toSensorChart(server.config.id, node.config.id, sensor.config.id)">开始绘图</a>
+                        <a href="" ng-show="sensor.isWarning" ng-click="removeWarning(sensor)">取消警报</a>
+                    </div>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</div>
