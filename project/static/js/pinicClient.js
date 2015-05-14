@@ -399,6 +399,14 @@
             broadcastSrv.sayShowChart(sId, nId, senId, 500);
         };
 
+        self.showServerConfig = function(sId) {
+            broadcastSrv.sayShowConfig(broadcastSrv.const.DEVICE_SERVER, null, sId);
+        };
+
+        self.showNodeConfig = function(sId, nId) {
+            broadcastSrv.sayShowConfig(broadcastSrv.const.DEVICE_NODE, null, sId, nId);
+        };
+
         // --- Broadcast listener
 
         broadcastSrv.onShowSubtree(function() {
@@ -406,6 +414,9 @@
         });
 
         broadcastSrv.onShowWarning(function() {
+            if (typeof self.server !== 'object' || typeof self.server.nodes !== 'object') {
+                return;
+            }
             var msg = angular.copy(broadcastSrv.msgs[broadcastSrv.const.SHOW_WARNING]);
             var sId = msg.sId;
             var nId = msg.nId;
@@ -671,14 +682,14 @@
 
         // --- Function of controller
 
-        self.setCurrentConfig = function(config) {
+        self.setCurrentConfig = function(config, sId) {
             if (config !== null && typeof config === 'object') {
                 for (var key in self.currentConfig) {
                     if (self.currentConfig.hasOwnProperty(key)) {
                         self.currentConfig[key] = config[key];
                     }
                 }
-                self.serverId = self.currentConfig.server_id;
+                self.serverId = sId;
             }
         };
 
@@ -694,7 +705,7 @@
         self.loadConfig = function(sId) {
             apiSrv.getServerConfig(sId, function(data) {
                 // success
-                self.setCurrentConfig(data);
+                self.setCurrentConfig(data, sId);
             }, function(data) {
                 // error
 
@@ -733,7 +744,118 @@
         });
     }]);
 
-    app.controller('NodeConfigCtrl', ['apiSrv', 'broadcastSrv', '$scope', function(spiSrv, broadcastSrv, self) {
+    app.controller('NodeConfigCtrl', ['apiSrv', 'broadcastSrv', '$scope', function(apiSrv, broadcastSrv, self) {
+        self.emptySensor = {
+            sensor_type: '',
+            sensor_id: '',
+            sensor_desc: '',
+            sensor_config: {},
+            sensor_interval: 2.0,
+            sensors: [],
+            filters: []
+        };
+
+        self.emptyFilter = {
+            apply_on_sensor_type: '',
+            apply_on_sensor_id: '',
+            comparing_method: '',
+            threshold: 0
+        };
+
+        self.currentConfig = {
+            node_host: '',
+            node_port: 0,
+            node_id: '',
+            node_desc: '',
+            server_addr: '',
+            server_port: '',
+            sensors: [],
+            filters: []
+        };
+
+        self.newConfig = angular.copy(self.currentConfig);
+
+        self.newConfigStr = '';
+
+        self.serverId = '';
+        self.nodeId = '';
+
+        self.isSentSuccess = false;
+        self.sentSuccessMsg = '';
+        self.isSentError = false;
+        self.sentErrorMsg = '';
+
+        // --- Function of controller
+
+        self.setCurrentConfig = function(config, sId, nId) {
+            if (config !== null && typeof config === 'object') {
+                for (var key in self.currentConfig) {
+                    if (self.currentConfig.hasOwnProperty(key)) {
+                        self.currentConfig[key] = config[key];
+                    }
+                }
+                self.serverId = sId;
+                self.nodeId = nId;
+            }
+        };
+
+        // self.newconfig --> string
+        self.convertNewConfig = function() {
+            self.newConfig.server_port = Number(self.newConfig.server_port);
+            self.newConfig.node_port = Number(self.newConfig.node_port);
+            self.newConfigStr = JSON.stringify(self.newConfig);
+            return JSON.stringify(self.newConfig);
+        };
+
+        // sId is server_id, nId is node_id.
+        self.loadConfig = function(sId, nId) {
+            apiSrv.getNodeConfig(sId, nId, function(data) {
+                // success
+                self.setCurrentConfig(data, sId, nId)
+            }, function(data) {
+                // error
+
+            });
+        };
+
+        self.sendConfig = function() {
+            apiSrv.setServerConfig(self.convertNewConfig(), self.serverId, function(data) {
+                self.isSentSuccess = true;
+                self.sentSuccessMsg = data;
+                self.setCurrentConfig(data);
+                broadcastSrv.sayRefreshTree();
+            }, function(data) {
+                self.isSentError = true;
+                self.sentErrorMsg = data;
+                broadcastSrv.sayRefreshTree();
+            });
+        };
+
+        self.clearSuccessStat = function() {
+            self.isSentSuccess = false;
+        };
+
+        self.clearErrorStar = function() {
+            self.isSentError = false;
+        };
+
+        self.addSensorFieldToNewConfig = function() {
+            self.newConfig.sensors.push(angular.copy(self.emptySensor));
+        };
+
+        self.addFilterFieldToNewConfig = function() {
+            self.newConfig.filters.push(angular.copy(self.emptyFilter));
+        };
+
+        // --- Listener of broadcast
+
+        broadcastSrv.onShowConfig(function() {
+            var msg = broadcastSrv.msgs[broadcastSrv.const.SHOW_CONFIG];
+            if (msg.deviceType !== broadcastSrv.const.DEVICE_NODE) {
+                return;
+            }
+            self.loadConfig(msg.sId, msg.nId);
+        });
 
     }]);
 })();
