@@ -471,7 +471,7 @@ class NodeMonitor(threading.Thread):
         super(NodeMonitor, self).__init__()
         self.server = server
         self.max_live_interval = 30.0  # 秒，超过这个限制则认为已经无连接
-        self.check_interval = 10.0  # 秒，检查间隔
+        self.check_interval = 5.0  # 秒，检查间隔
         self.stop_event = threading.Event()  # 设置停止事件
 
     def check_warning(self, node_info):

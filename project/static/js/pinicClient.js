@@ -203,7 +203,7 @@
         srv.updateSensor = function(server, node, sensor) {
             apiSrv.getSensorData(server.config.id, node.config.id, sensor.config.id, function(data) {
                 // success
-                sensor.config.value = data;
+                sensor.config.value = data.raw_value;
             }, function(data) {
                 // error
                 sensor.config.value = 'Error: ' + data;
@@ -426,6 +426,8 @@
 
         self.deviceData = {};
 
+        self.hostName = window.location.hostname;
+
         // --- Function of controller
 
         self.refreshTree = function() {
@@ -469,6 +471,15 @@
 
         self.removeWarning = function(device) {
             if (device != undefined) {
+                device.isWarning = false;
+            }
+        };
+
+        self.removeNodeAndSubDeviceWarning = function(device) {
+            if (device != undefined) {
+                for (var sensor in device.sensors) {
+                    device.sensors[sensor].isWarning = false;
+                }
                 device.isWarning = false;
             }
         };
@@ -538,11 +549,10 @@
             var info = JSON.parse(data.data);
             var time = new Date(info.timestamp * 1000);
             self.highlightDevice(info.server, info.node.id, info.sensor_id, info.raw_value);
-            self.warningText = '[' + time.toString().split(' ')[4] + ']' + '\n'
-                + '  Server:' +  info.server + ', Node:' + info.node.id + ', Sensor:' + info.sensor_id + '\n'
-                + '  Value:' + info.raw_value
+            self.warningText = '[' + time.toString().split(' ')[4] + ']'
+                + info.server + '\\' + info.node.id + '\\' + info.sensor_id + ' Value=' + info.raw_value
                 + '\n' + self.warningText;
-            self.warningText = self.warningText.split('\n').slice(0, 10).join('\n');
+            self.warningText = self.warningText.split('\n').slice(0, 30).join('\n');
         });
     }]);
 

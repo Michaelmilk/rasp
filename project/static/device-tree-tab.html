@@ -1,21 +1,20 @@
 <div id="device-tree-section-div" ng-controller="DeviceTreeCtrl as tree">
-    <div class="panel panel-default" ng-show="deviceData.forwarder">
-        <div class="panel-body">
-            <h3>{{ deviceData.forwarder.config.id }} <span class="badge">FORWARDER</span></h3>
-            描述: {{ deviceData.forwarder.config.desc }}<br>
-            地址: {{ hostName }} : {{ deviceData.forwarder.config.port }}
-            <a href="" ng-click="showForwarderConfig()">配置</a>
-        </div>
-    </div>
-
     <div class="row">
         <div class="col-xs-12 col-md-4">
-            <h4>Server列表</h4>
+            <h4>系统Server列表</h4>
             <ul class="list-group">
+                <li class="list-group-item list-group-item-info" ng-show="deviceData.forwarder">
+                    <h4><strong>{{ deviceData.forwarder.config.id }}</strong> <span class="badge">FORWARDER</span></h4>
+                    描述: {{ deviceData.forwarder.config.desc }}<br>
+                    地址: {{ hostName }}:{{ deviceData.forwarder.config.port }}
+                    <div class="pull-right">
+                        <button class="btn btn-primary btn-xs" ng-click="showForwarderConfig()">配置</button>
+                    </div>
+                </li>
                 <li class="list-group-item" ng-repeat="server in deviceData.forwarder.servers">
                     <strong>{{ server.config.id }}</strong><br>
                     描述: {{ server.config.desc }}<br>
-                    地址: {{ server.config.addr }} : {{ server.config.port }}
+                    地址: {{ server.config.addr }}:{{ server.config.port }}
                     <div class="pull-right">
                         <button class="btn btn-primary btn-xs" ng-click="showServerInDeviceList(server)">显示详情</button>
                         <button class="btn btn-primary btn-xs" ng-click="showServerConfig(server.config.id)">配置</button>
@@ -24,6 +23,12 @@
             </ul>
         </div>
         <div class="col-xs-12 col-md-8">
+            <div>
+                <h4>地图显示</h4>
+                <ul class="list-group">
+                    <li class="list-group-item" style="min-height: 200px"></li>
+                </ul>
+            </div>
             <div device-list-tab></div>
         </div>
     </div>
