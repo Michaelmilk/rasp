@@ -7,5 +7,7 @@
         </div>
     </div>
     <p>
+        <button class="btn btn-primary" ng-click="stopChart()" ng-show="isChartRunning">停止绘图</button>
+        <button class="btn btn-primary" ng-click="startChart()" ng-show="isInitialized && !isChartRunning">继续绘图</button>
     </p>
 </div>
