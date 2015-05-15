@@ -422,11 +422,13 @@
         };
     });
 
-    app.controller('DeviceTreeCtrl', ['tabSrv', 'devicesSrv', 'broadcastSrv', '$scope', function(tabSrv, devicesSrv, broadcastSrv, self) {
+    app.controller('DeviceTreeCtrl', ['tabSrv', 'devicesSrv', 'broadcastSrv', '$interval', '$scope', function(tabSrv, devicesSrv, broadcastSrv, $interval, self) {
 
         self.deviceData = {};
 
         self.hostName = window.location.hostname;
+
+        self.refreshTimer = null;
 
         // --- Function of controller
 
@@ -434,8 +436,26 @@
             devicesSrv.updateDevices(self.deviceData);
         };
 
+        self.lastShownServerId = '';
+
         self.showServerInDeviceList = function(server) {
+            console.log(server);
+            self.lastShownServerId = server.config.id;
             broadcastSrv.sayShowSubtree(server);
+        };
+
+        self.refreshServerInDeviceList = function() {
+            console.log(self.lastShownServerId);
+            if (self.lastShownServerId === undefined || self.lastShownServerId === '') {
+                return;
+            }
+            var servers = self.deviceData.forwarder.servers;
+            for (var k in servers) {
+                if (servers[k].config.id === self.lastShownServerId) {
+                    broadcastSrv.sayShowSubtree(servers[k]);
+                    break;
+                }
+            }
         };
 
         self.showForwarderConfig = function() {
@@ -455,6 +475,11 @@
         });
 
         self.refreshTree();
+        // todo make time interval changeable
+        self.refreshTimer = $interval(function() {
+            self.refreshServerInDeviceList();
+            self.refreshTree();
+        }, 15000);
     }]);
 
     app.controller('DeviceListCtrl', ['tabSrv', 'broadcastSrv', '$scope', function(tabSrv, broadcastSrv, self) {
@@ -466,6 +491,7 @@
         // server is a 'server' object in deviceData of devicesSrv.
         // it will be DEEP COPIED to this controller.
         self.loadSubTree = function(server) {
+            self.server = {};
             self.server = angular.copy(server);
         };
 
