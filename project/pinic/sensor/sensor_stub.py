@@ -20,7 +20,7 @@ class Sensor(BaseSensor):
     """
 
     def __init__(self, sensor_id, sensor_desc, sensor_config):
-        super(Sensor, self).__init__("Stub", sensor_id, sensor_desc, sensor_config)
+        super(Sensor, self).__init__("stub", sensor_id, sensor_desc, sensor_config)
         self.count = 0
 
     def initialize(self):

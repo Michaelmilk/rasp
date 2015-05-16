@@ -65,6 +65,48 @@
         };
     }]);
 
+    app.service('valueConvertSrv', function() {
+        var srv = {};
+
+        // return [convertedValue, unit].
+        srv.convertFunctions = {
+            'tlc1549': function(value) {
+                // u/v = r/(250+r), v is 5V DC, u is detected voltage
+                // ->
+                // raw/1024 = r/(250+r)
+                // ->
+                // r = 250raw/(1024-raw)
+                var raw = Number(value);
+                var r = (250.0 * raw) / (1024.01 - raw);
+                return [r, 'Ω'];
+            },
+            'stub': function(value) {
+                return [value, '次'];
+            },
+            'random': function(value) {
+                return [Math.ceil(value), ''];
+            }
+        };
+
+        srv.convert = function(type, raw_value) {
+            if (type in srv.convertFunctions) {
+                return srv.convertFunctions[type](raw_value).join('');
+            } else {
+                return raw_value;
+            }
+        };
+
+        srv.convertWithoutFormat = function(type, raw_value) {
+            if (type in srv.convertFunctions) {
+                return srv.convertFunctions[type](raw_value)[0];
+            } else {
+                return raw_value;
+            }
+        };
+
+        return srv;
+    });
+
     app.service('tabSrv', function() {
         var srv = {};
 
@@ -124,7 +166,7 @@
         return srv;
     }]);
 
-    app.service('devicesSrv', ['apiSrv', function(apiSrv) {
+    app.service('devicesSrv', ['apiSrv', 'valueConvertSrv', function(apiSrv, valueConvertSrv) {
         var srv = {};
 
         srv.const = {
@@ -203,7 +245,8 @@
         srv.updateSensor = function(server, node, sensor) {
             apiSrv.getSensorData(server.config.id, node.config.id, sensor.config.id, function(data) {
                 // success
-                sensor.config.value = data.raw_value;
+                // todo changed!
+                sensor.config.value = valueConvertSrv.convert(data.sensor_type, data.raw_value);
             }, function(data) {
                 // error
                 sensor.config.value = 'Error: ' + data;
@@ -439,13 +482,11 @@
         self.lastShownServerId = '';
 
         self.showServerInDeviceList = function(server) {
-            console.log(server);
             self.lastShownServerId = server.config.id;
             broadcastSrv.sayShowSubtree(server);
         };
 
         self.refreshServerInDeviceList = function() {
-            console.log(self.lastShownServerId);
             if (self.lastShownServerId === undefined || self.lastShownServerId === '') {
                 return;
             }
@@ -482,7 +523,7 @@
         }, 15000);
     }]);
 
-    app.controller('DeviceListCtrl', ['tabSrv', 'broadcastSrv', '$scope', function(tabSrv, broadcastSrv, self) {
+    app.controller('DeviceListCtrl', ['tabSrv', 'broadcastSrv', 'valueConvertSrv', '$scope', function(tabSrv, broadcastSrv, valueConvertSrv, self) {
 
         self.server = {};
 
@@ -492,7 +533,7 @@
         // it will be DEEP COPIED to this controller.
         self.loadSubTree = function(server) {
             self.server = {};
-            self.server = angular.copy(server);
+            self.server = server;
         };
 
         self.removeWarning = function(device) {
@@ -553,6 +594,7 @@
                         var sensor = sensors[j];
                         if (senId === sensor.config.id) {
                             sensor.isWarning = true;
+                            sensor.config.value = valueConvertSrv.convert(sensor.config.type, value);
                         }
                     }
                 }
@@ -582,7 +624,7 @@
         });
     }]);
 
-    app.controller('ChartCtrl', ['apiSrv', 'broadcastSrv', '$interval', '$timeout', '$scope', function(apiSrv, broadcastSrv, $interval, $timeout, self) {
+    app.controller('ChartCtrl', ['apiSrv', 'broadcastSrv', 'valueConvertSrv', '$interval', '$timeout', '$scope', function(apiSrv, broadcastSrv, valueConvertSrv, $interval, $timeout, self) {
 
         self.colorSet = ['#97BBCD'];
 
@@ -615,8 +657,7 @@
                 // success
                 // todo load some parsing module and parse the raw value
                 var x = new Date(data.timestamp * 1000);
-                var y = data.raw_value;
-
+                var y = valueConvertSrv.convertWithoutFormat(data.sensor_type, data.raw_value);
                 self.chartData.push([x, y]);
                 if (self.chartData.length > 40) {
                     self.chartData.shift();
