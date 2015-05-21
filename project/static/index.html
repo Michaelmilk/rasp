@@ -15,36 +15,45 @@
 </head>
 <body class="container" ng-controller="tabController as tab">
 
-<!-- Header -->
-<header>
-    <h1 class="text-center">pinic client</h1>
-    <h2 class="text-center">- wow, such doge</h2>
-</header>
 
-<ul class="nav nav-pills">
-    <li ng-class="{ active:tabIsSet(1) }">
-        <a href ng-click="setTab(1)">总览</a>
-    </li>
-    <li ng-class="{ active:tabIsSet(2) }" ng-hide="true">
-        <a href ng-click="setTab(2)">监控曲线</a>
-    </li>
-    <li ng-class="{ active:tabIsSet(3)||tabIsSet(4)||tabIsSet(5) }">
-        <a href ng-click="setTab(3)">Forwarder配置</a>
-    </li>
-    <li ng-class="{ active:tabIsSet(4)||tabIsSet(5) }">
-        <a href ng-click="setTab(4)">其他配置</a>
-    </li>
-</ul>
+<div class="row">
+    <!-- Navigation -->
+    <div class="col-md-2">
+        <ul class="nav nav-pills nav-stacked">
+            <li class="disabled"><a><strong>导航</strong></a></li>
+            <li ng-class="{ active:tabIsSet(1) }">
+                <a href ng-click="setTab(1)">总览</a>
+            </li>
+            <li ng-class="{ active:tabIsSet(2) }">
+                <a href ng-click="setTab(2)">监控曲线</a>
+            </li>
+            <li ng-class="{ active:tabIsSet(3) }">
+                <a href ng-click="setTab(3)">Forwarder配置</a>
+            </li>
+            <li ng-class="{ active:tabIsSet(4) }">
+                <a href ng-click="setTab(4)">Server配置</a>
+            </li>
+            <li ng-class="{ active:tabIsSet(5) }">
+                <a href ng-click="setTab(5)">Node配置</a>
+            </li>
+        </ul>
+    </div>
 
-<div device-tree-tab ng-show="tabIsSet(1)"></div>
+    <!-- Main -->
+    <div class="col-md-10">
+        <div device-tree-tab ng-show="tabIsSet(1)"></div>
+        <div chart-tab ng-show="tabIsSet(2)"></div>
+        <div forwarder-config-tab ng-show="tabIsSet(3)"></div>
+        <div server-config-tab ng-show="tabIsSet(4)"></div>
+        <div node-config-tab ng-show="tabIsSet(5)"></div>
+    </div>
+</div>
 
-<div chart-tab ng-show="tabIsSet(2)"></div>
-
-<div forwarder-config-tab ng-show="tabIsSet(3)"></div>
-
-<div server-config-tab ng-show="tabIsSet(4)"></div>
-
-<div node-config-tab ng-show="tabIsSet(5)"></div>
+<div class="footer">
+    <div class="container text-center">
+        <p class="text-muted small">- Pinic, by tgmerge</p>
+    </div>
+</div>
 
 </body>
 </html>
