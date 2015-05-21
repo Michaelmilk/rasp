@@ -1,4 +1,18 @@
 <div id="device-tree-section-div" ng-controller="DeviceTreeCtrl as tree">
+    <div>
+        <script type="text/ng-template" id="field_renderer.html">
+            wow, {{child.name}}
+            <ul>
+                <li ng-repeat="child in child.children" ng-include="'field_renderer.html'"></li>
+            </ul>
+        </script>
+
+        <ul id="server-tree">
+            <li ng-repeat="child in deviceData.forwarder.serverTree" ng-include="'field_renderer.html'"></li>
+        </ul>
+    </div>
+
+
     <div class="row">
         <div class="col-xs-12 col-md-4">
             <h4>系统Server列表</h4>
