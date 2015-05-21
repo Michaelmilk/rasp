@@ -603,9 +603,10 @@
 
     }]);
 
-    app.controller('WarningCtrl', ['socketIO', 'broadcastSrv', '$scope', function(socketIO, broadcastSrv, self) {
+    app.controller('WarningCtrl', ['socketIO', 'broadcastSrv', 'valueConvertSrv', '$scope', function(socketIO, broadcastSrv, valueConvertSrv, self) {
 
-        self.warningText = 'Empty';
+        self.warningItems = [];
+        self.maxWarningNum = 6;
 
         // --- Function of controller
 
@@ -613,14 +614,30 @@
             broadcastSrv.sayShowWarning(null, null, sId, nId, senId, value)
         };
 
+        self.addWarningItem = function(date, deviceName, sensorName, sensorType, infoType, value) {
+            var warningItem = {
+                timeString: date.toString().split(' ')[4],
+                deviceName: deviceName,
+                sensorName: sensorName,
+                sensorType: sensorType,
+                infoType: infoType,
+                value: valueConvertSrv.convert(sensorType, value)
+            };
+
+            // Add warning item
+            self.warningItems.unshift(warningItem);
+
+            // Delete eldest items if necessary
+            if (self.warningItems.length > self.maxWarningNum) {
+                self.warningItems.splice(self.maxWarningNum, self.warningItems.length-self.maxWarningNum);
+            }
+        };
+
         socketIO.on('warning', function(data) {
             var info = JSON.parse(data.data);
             var time = new Date(info.timestamp * 1000);
             self.highlightDevice(info.server, info.node.id, info.sensor_id, info.raw_value);
-            self.warningText = '[' + time.toString().split(' ')[4] + ']'
-                + info.server + '\\' + info.node.id + '\\' + info.sensor_id + ' Value=' + info.raw_value
-                + '\n' + self.warningText;
-            self.warningText = self.warningText.split('\n').slice(0, 30).join('\n');
+            self.addWarningItem(time, info.server + '\\' + info.node.id, info.sensor_id, info.sensor_type, '警报', info.raw_value);
         });
     }]);
 
