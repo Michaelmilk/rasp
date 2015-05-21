@@ -223,7 +223,9 @@
                     port: '',
                     desc: ''
                 },
-                servers: []
+                servers: [],
+                serverTree: [] // UGLY HACK 233, after known servers is fetched,
+                               // a TREE will be built using servers' "Description" string(as path).
             }
         };
 
@@ -294,6 +296,46 @@
             });
         };
 
+        var structurize = function(paths) {
+            var items = [];
+            for(var i = 0, l = paths.length; i < l; i++) {
+                var path = paths[i];
+                var name = path[0];
+                var rest = path.slice(1);
+                var item = null;
+                for(var j = 0, m = items.length; j < m; j++) {
+                    if(items[j].name === name) {
+                        item = items[j];
+                        break;
+                    }
+                }
+                if(item === null) {
+                    item = {name: name, children: []};
+                    items.push(item);
+                }
+                if(rest.length > 0) {
+                    item.children.push(rest);
+                }
+            }
+            for(i = 0, l = items.length; i < l; i++) {
+                item = items[i];
+                item.children = structurize(item.children);
+            }
+            return items;
+        };
+
+        // f*ck this
+        srv.buildServerTree = function(forwarder) {
+            var paths = [];
+            for (var i = 0; i < forwarder.servers.length; i ++){
+                var server = forwarder.servers[i];
+                paths.push((server.config.desc + '/' + server.config.id).split('/'));
+            }
+            forwarder.serverTree = structurize(paths);
+            console.log("tree:");
+            console.log(forwarder.serverTree);
+        };
+
         // Update forwarder and its child-devices
         // Forwarder.config.id, addr, etc should be already set
         srv.updateForwarderAndChild = function(forwarder) {
@@ -309,6 +351,10 @@
                     srv.addServerToForwarder(newServer, forwarder);
                     srv.updateServerAndChild(newServer);
                 }
+                // Now we have all known servers(although update process of which is still running).
+                // Let's build a tree using servers' "description" string,
+                // And store that tree into forwarder.serverTree prop!
+                srv.buildServerTree(forwarder);
             }, function(data) {
                 // error
 
