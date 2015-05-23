@@ -1,7 +1,8 @@
-<div id="device-list-section-div" ng-controller="DeviceListCtrl as list">
-    <h4>Server详情</h4>
-
-    <ul class="list-group">
+<div id="devices-tab-server-detail-section" ng-controller="DeviceListCtrl as list">
+    <ul class="nav nav-pills nav-stacked">
+        <li class="disabled"><a><strong>Server详情</strong></a></li>
+    </ul>
+    <ul class="list-group" id="server-detail-section-scrollable">
         <li class="list-group-item list-group-item-info" ng-class="{ warningdevice: server.isWarning }" ng-show="server.config">
             <h4><strong>{{ server.config.id }}</strong> <span class="badge">SERVER</span></h4>
             描述: {{ server.config.desc }}<br>

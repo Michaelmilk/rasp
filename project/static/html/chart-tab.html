@@ -1,5 +1,7 @@
-<div id="chart-section-div" ng-controller="ChartCtrl as chart">
-    <h3>监控</h3>
+<div id="chart-tab" ng-controller="ChartCtrl as chart">
+    <ul class="nav nav-pills nav-stacked">
+        <li class="disabled"><a><strong>传感器监控</strong></a></li>
+    </ul>
     <p>目标传感器： {{ serverId }} / {{ nodeId }} / {{ sensorId }}</p>
     <div class="panel panel-default">
         <div id="sensor-chart-container" class="panel-body">

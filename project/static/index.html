@@ -17,6 +17,9 @@
 </head>
 <body class="container" ng-controller="tabController as tab">
 
+<div class="page-header">
+    <h3>Pinic client</h3>
+</div>
 
 <div class="row">
     <!-- Navigation -->
@@ -41,9 +44,9 @@
         </ul>
     </div>
 
-    <!-- Main -->
+    <!-- Main content area -->
     <div class="col-md-10">
-        <div device-tree-tab ng-show="tabIsSet(1)"></div>
+        <div devices-tab ng-show="tabIsSet(1)"></div>
         <div chart-tab ng-show="tabIsSet(2)"></div>
         <div forwarder-config-tab ng-show="tabIsSet(3)"></div>
         <div server-config-tab ng-show="tabIsSet(4)"></div>

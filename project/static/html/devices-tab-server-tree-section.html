@@ -1,0 +1,37 @@
+<div id="devices-tab-server-tree-section">
+    <ul class="nav nav-pills nav-stacked">
+        <li class="disabled"><a><strong>Server列表</strong></a></li>
+    </ul>
+    <ul class="list-group">
+        <li class="list-group-item list-group-item-info" ng-show="deviceData.forwarder">
+            <h4><strong>{{ deviceData.forwarder.config.id }}</strong> <span class="badge">FORWARDER</span></h4>
+            描述: {{ deviceData.forwarder.config.desc }}<br>
+            地址: {{ hostName }}:{{ deviceData.forwarder.config.port }}
+            <div class="pull-right">
+                <button class="btn btn-primary btn-xs" ng-click="showForwarderConfig()">配置</button>
+                <button class="btn btn-primary btn-xs" ng-click="refreshTree()">刷新</button>
+            </div>
+        </li>
+        <li class="list-group-item">
+            <div id="server-tree">
+                <script type="text/ng-template" id="file_renderer.html">
+                    <a href=""  ng-click="showServerInDeviceListById(child.name)">{{count}}{{child.name}}</a>
+                </script>
+                <script type="text/ng-template" id="field_renderer.html">
+                    <label for="S-{{objHashKey(child)}}">{{child.name}}</label>
+                    <input type="checkbox" id="S-{{objHashKey(child)}}" checked/>
+                    <ol>
+                        <li ng-repeat="child in child.children" ng-if="child.children.length !== 0" ng-include="'field_renderer.html'"></li>
+                        <li class="file" ng-repeat="child in child.children" ng-if="child.children.length === 0" ng-include="'file_renderer.html'"></li>
+                    </ol>
+                </script>
+                <ol class="tree">
+                    <li ng-repeat="child in deviceData.forwarder.serverTree" ng-include="'field_renderer.html'">
+                        <label for="R-{{objHashKey(child)}}">{{child.name}}</label>
+                        <input type="checkbox" id="R-{{objHashKey(child)}}" checked/>
+                    </li>
+                </ol>
+            </div>
+        </li>
+    </ul>
+</div>

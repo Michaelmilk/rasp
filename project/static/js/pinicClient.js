@@ -6,52 +6,59 @@
 (function() {
     var app = angular.module('pinicClient', []);
 
-    app.directive('deviceTreeTab', function() {
+    app.directive('devicesTab', function() {
         return {
             restrict: 'EA',
-            templateUrl: 'device-tree-tab.html'
+            templateUrl: 'html/devices-tab.html'
         };
     });
 
-    app.directive('deviceListTab', function() {
+    app.directive('devicesTabServerDetailSection', function() {
         return {
             restrict: 'EA',
-            templateUrl: 'device-list-tab.html'
+            templateUrl: 'html/devices-tab-server-detail-section.html'
         };
     });
 
-    app.directive('warningTab', function() {
+    app.directive('devicesTabServerTreeSection', function() {
         return {
             restrict: 'EA',
-            templateUrl: 'warning-tab.html'
+            templateUrl: 'html/devices-tab-server-tree-section.html'
+        };
+    });
+
+    app.directive('devicesTabWarningSection', function() {
+        return {
+            restrict: 'EA',
+            templateUrl: 'html/devices-tab-warning-section.html'
         };
     });
 
     app.directive('chartTab', function() {
         return {
             restrict: 'EA',
-            templateUrl: 'chart-tab.html'
+            templateUrl: 'html/chart-tab.html'
         };
     });
 
     app.directive('forwarderConfigTab', function() {
         return {
             restrict: 'EA',
-            templateUrl: 'forwarder-config-tab.html'
+            templateUrl: 'html/forwarder-config-tab.html'
         };
     });
 
     app.directive('serverConfigTab', function() {
         return {
             restrict: 'EA',
-            templateUrl: 'server-config-tab.html'
+            templateUrl: 'html/server-config-tab.html'
         };
     });
 
     app.directive('nodeConfigTab', function() {
         return {
             restrict: 'EA',
-            templateUrl: 'node-config-tab.html'
+            templateUrl: 'html/node-config-tab.html'
         };
     });
 
@@ -543,6 +550,16 @@
             broadcastSrv.sayShowSubtree(server);
         };
 
+        self.showServerInDeviceListById = function(serverId) {
+            for (var i in self.deviceData.forwarder.servers) {
+                var server = self.deviceData.forwarder.servers[i];
+                if (serverId === server.config.id) {
+                    self.showServerInDeviceList(server);
+                    break;
+                }
+            }
+        };
+
         self.refreshServerInDeviceList = function() {
             if (self.lastShownServerId === undefined || self.lastShownServerId === '') {
                 return;
@@ -842,6 +859,7 @@
                         self.currentConfig[key] = config[key];
                     }
                 }
+                self.newConfig = angular.copy(self.currentConfig);
             }
         };
 
@@ -925,6 +943,7 @@
                     }
                 }
                 self.serverId = sId;
+                self.newConfig = angular.copy(self.currentConfig);
             }
         };
 
@@ -1031,6 +1050,7 @@
                 }
                 self.serverId = sId;
                 self.nodeId = nId;
+                self.newConfig = angular.copy(self.currentConfig);
             }
         };
 
