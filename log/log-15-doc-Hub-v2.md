@@ -31,10 +31,15 @@
 
 在Raspberry Pi上的环境配置：
 
+1. `sudo apt-get update`
 1. `sudo apt-get install python-pycurl`
-2. `sudo apt-get install python-dev libevent-dev python-setuptools`
-3. `sudo pip install gevent`，需要很长时间
-4. `sudo pip install bottle`
+2. `sudo apt-get install python-pip`
+3. `sudo apt-get install python-dev libevent-dev python-setuptools`
+4. `sudo pip install gevent`，需要很长时间
+5. `sudo pip install bottle`
+6. `sudo pip install gevent-socketio`
+7. `sudo pip install grequests`
+8. `sudo pip install spidev`
 
 在Windows上的环境配置：
 
@@ -42,6 +47,9 @@
 2. 安装[Microsoft Visual C++ Compiler for Python 2.7]，gevent的安装需要这个。
 3. `pip install gevent`
 4. `pip install bottle`
+6. `sudo pip install gevent-socketio`
+7. `sudo pip install grequests`
+8. `sudo pip install spidev`
 
 ## 运行
 

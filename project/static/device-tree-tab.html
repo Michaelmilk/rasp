@@ -1,15 +1,25 @@
 <div id="device-tree-section-div" ng-controller="DeviceTreeCtrl as tree">
-    <div>
-        <script type="text/ng-template" id="field_renderer.html">
-            wow, {{child.name}}
-            <ul>
-                <li ng-repeat="child in child.children" ng-include="'field_renderer.html'"></li>
-            </ul>
+    <div id="server-tree">
+
+        <script type="text/ng-template" id="file_renderer.html">
+            <a href>{{child.name}}</a>
         </script>
 
-        <ul id="server-tree">
-            <li ng-repeat="child in deviceData.forwarder.serverTree" ng-include="'field_renderer.html'"></li>
-        </ul>
+        <script type="text/ng-template" id="field_renderer.html">
+            <label for="S-{{objHashKey(child)}}">{{child.name}}</label>
+            <input type="checkbox" id="S-{{objHashKey(child)}}"/>
+            <ol>
+                <li ng-repeat="child in child.children" ng-if="child.children.length !== 0" ng-include="'field_renderer.html'"></li>
+                <li class="file" ng-repeat="child in child.children" ng-if="child.children.length === 0" ng-include="'file_renderer.html'"></li>
+            </ol>
+        </script>
+
+        <ol class="tree">
+            <li ng-repeat="child in deviceData.forwarder.serverTree" ng-include="'field_renderer.html'">
+                <label for="R-{{objHashKey(child)}}">{{child.name}}</label>
+                <input type="checkbox" id="R-{{objHashKey(child)}}"/>
+            </li>
+        </ol>
     </div>
 
 

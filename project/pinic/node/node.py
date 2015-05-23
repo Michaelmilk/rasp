@@ -393,7 +393,7 @@ class ServerMonitor(threading.Thread):
 
 
 class SensorThread(threading.Thread):
-    """传感器监视线程。以固定时间间隔从传感器读取数据，并发送给Gateway。"""
+    """传感器监视线程。"""
 
     def __init__(self, node, index):
         """

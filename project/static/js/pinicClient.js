@@ -332,8 +332,6 @@
                 paths.push((server.config.desc + '/' + server.config.id).split('/'));
             }
             forwarder.serverTree = structurize(paths);
-            console.log("tree:");
-            console.log(forwarder.serverTree);
         };
 
         // Update forwarder and its child-devices
@@ -355,6 +353,7 @@
                 // Let's build a tree using servers' "description" string,
                 // And store that tree into forwarder.serverTree prop!
                 srv.buildServerTree(forwarder);
+                ddtreemenu.createTree('server-tree', true, 5);
             }, function(data) {
                 // error
 
@@ -521,6 +520,18 @@
 
         // --- Function of controller
 
+        self.objHashKey = function(obj) {
+            var str = JSON.stringify(obj);
+            var hash = 0;
+            if (str.length == 0) return hash;
+            for (var i = 0; i < str.length; i++) {
+                var character = str.charCodeAt(i);
+                hash = ((hash<<5)-hash)+character;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return hash;
+        };
+
         self.refreshTree = function() {
             devicesSrv.updateDevices(self.deviceData);
         };
@@ -683,7 +694,7 @@
             var info = JSON.parse(data.data);
             var time = new Date(info.timestamp * 1000);
             self.highlightDevice(info.server, info.node.id, info.sensor_id, info.raw_value);
-            self.addWarningItem(time, info.server + '\\' + info.node.id, info.sensor_id, info.sensor_type, '警报', info.raw_value);
+            self.addWarningItem(time, info.server + '/' + info.node.id, info.sensor_id, info.sensor_type, '警报', info.raw_value);
         });
     }]);
 
