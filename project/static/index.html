@@ -18,6 +18,7 @@
 <body class="container" ng-controller="tabController as tab">
 
 <div class="page-header clearfix" ng-controller="StatusCtrl as status">
+    <audio class="hidden" id="alert-audio" src="alert.mp3" preload="auto"></audio>
     <ul class="list-inline">
         <li>
             <h2>Pinic client</h2>
@@ -36,6 +37,15 @@
         <li>
             Server报警
             <div ng-class="{statuserror: warningStat, statusfine: !warningStat}"></div>
+        </li>
+        <li>
+            |
+        </li>
+        <li>
+            <label><input type="checkbox" ng-model="willSoundAlert">声音</label>
+        </li>
+        <li>
+            |
         </li>
         <li>
             <button class="btn btn-xs btn-danger" ng-show="warningStat" ng-click="cancelWarning()">取消警报</button>

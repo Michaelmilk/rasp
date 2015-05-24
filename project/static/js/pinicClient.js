@@ -173,7 +173,7 @@
         return srv;
     }]);
 
-    app.service('devicesSrv', ['apiSrv', 'valueConvertSrv', function(apiSrv, valueConvertSrv) {
+    app.service('devicesSrv', ['apiSrv', 'valueConvertSrv', 'broadcastSrv', function(apiSrv, valueConvertSrv, broadcastSrv) {
         var srv = {};
 
         srv.const = {
@@ -297,9 +297,10 @@
                     srv.addNodeToServer(newNode, server);
                     srv.updateNodeAndChild(server, newNode);
                 }
+                broadcastSrv.sayServerConnect();
             }, function(data) {
                 // error
-
+                broadcastSrv.sayServerDisconnect();
             });
         };
 
@@ -540,8 +541,17 @@
         return srv;
     }]);
 
-    app.service('socketIO', function($rootScope) {
+    app.service('socketIO', ['$rootScope', 'broadcastSrv', function($rootScope, broadcastSrv) {
         var socket = io.connect('/warning');
+
+        socket.on('connect', function() {
+            broadcastSrv.sayForwarderConnect();
+        });
+
+        socket.on('disconnect', function() {
+            broadcastSrv.sayForwarderDisconnect();
+        });
+
         return {
             on: function(eventName, callback) {
                 socket.on(eventName, function() {
@@ -562,7 +572,7 @@
                 })
             }
         };
-    });
+    }]);
 
     app.controller('DeviceTreeCtrl', ['tabSrv', 'devicesSrv', 'broadcastSrv', '$interval', '$scope', function(tabSrv, devicesSrv, broadcastSrv, $interval, self) {
 
@@ -1175,11 +1185,13 @@
 
     app.controller('StatusCtrl', ['broadcastSrv', '$scope', function(broadcastSrv, self) {
 
-        self.forwarderStat = false;
+        self.forwarderStat = true;
 
         self.serverStat = false;
 
         self.warningStat = false;
+
+        self.willSoundAlert = false;
 
         self.cancelWarning = function() {
             broadcastSrv.sayCancelWarning();
@@ -1203,6 +1215,9 @@
 
         broadcastSrv.onShowWarning(function() {
             self.warningStat = true;
+            if (self.willSoundAlert) {
+                document.getElementById('alert-audio').play();
+            }
         });
 
         broadcastSrv.onCancelWarning(function() {
