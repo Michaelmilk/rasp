@@ -22,8 +22,7 @@
                 "sensor_type":"stub",            # 传感器的设备类型
                 "sensor_id":"TEST-SENSOR-1",     # 传感器的ID，建议在网络中唯一
                 "sensor_desc":"Test sensor.",    # 传感器描述文字
-                "sensor_config": {},             # 传感器初始化配置
-                "sensor_interval":5.0            # 采样间隔（秒）
+                "sensor_config": {}              # 传感器初始化配置
             }
         ],
         "filters":[                           # 传感数据过滤规则列表
@@ -77,13 +76,12 @@ class NodeConfig(object):
             ("sensor_id", basestring),
             ("sensor_desc", basestring),
             ("sensor_config", dict),
-            ("sensor_interval", float)
         ],
         "filters": [
             ("apply_on_sensor_type", basestring),
             ("apply_on_sensor_id", basestring),
             ("comparing_method", basestring),
-            ("threshold", float)
+            ("threshold", int)
         ]
     }
     """ 用于在Json解析中检查配置的第二级键值错误 """

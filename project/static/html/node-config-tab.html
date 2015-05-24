@@ -43,6 +43,7 @@
         </div>
         <div ng-repeat="sensor in currentConfig.sensors">
             <hr>
+            <h4>传感器：</h4>
             <div class="form-group">
                 <label class="col-sm-2 control-label">传感器 ID</label>
                 <div class="col-sm-10">
@@ -61,6 +62,138 @@
                     <input type="text" class="form-control" ng-value="sensor.sensor_type" readonly>
                 </div>
             </div>
+        </div>
+        <div ng-repeat="filter in currentConfig.filters">
+            <hr>
+            <h4>数据过滤条件：</h4>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">应用于传感器种类</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-value="filter.apply_on_sensor_type" readonly>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">应用于传感器ID</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-value="filter.apply_on_sensor_id" readonly>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">排除方式</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-value="filter.comparing_method" readonly>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">排除阈值</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-value="filter.threshold" readonly>
+                </div>
+            </div>
+        </div>
+    </form>
+
+
+    <form class="form-horizontal" name="nodeNewConfigForm">
+        <h4>更新配置</h4>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">连接到Server地址</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.server_addr">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">连接到Server端口</label>
+            <div class="col-sm-10">
+                <input type="number" class="form-control" ng-model="newConfig.server_port">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Node ID</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.node_id">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Node描述</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.node_desc">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Node主机</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.node_host">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-2 control-label">Node端口</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" ng-model="newConfig.node_port">
+            </div>
+        </div>
+        <div ng-repeat="sensor in newConfig.sensors">
+            <hr>
+            <h4>传感器：
+                <button type="button" class="btn btn-sm btn-danger" ng-click="removeSensorFieldFromNewConfig(sensor)">删除</button>
+            </h4>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">传感器 ID</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-model="sensor.sensor_id">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">传感器描述</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-model="sensor.sensor_desc">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">传感器种类</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-model="sensor.sensor_type">
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <button type="button" class="btn btn-primary pull-right" ng-click="addSensorFieldToNewConfig()">增加传感器</button>
+        </div>
+        <div ng-repeat="filter in newConfig.filters">
+            <hr>
+            <h4>数据过滤条件：
+                <button type="button" class="btn btn-sm btn-danger" ng-click="removeFilterFieldFromNewConfig(filter)">删除</button>
+            </h4>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">应用于传感器种类</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-model="filter.apply_on_sensor_type">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">应用于传感器ID</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-model="filter.apply_on_sensor_id">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">排除方式</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-model="filter.comparing_method">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-2 control-label">排除阈值</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" ng-model="filter.threshold">
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <button type="button" class="btn btn-primary pull-right" ng-click="addFilterFieldToNewConfig()">增加过滤条件</button>
+        </div>
+        <div class="form-group">
+            <button type="button" class="btn btn-primary center-block" ng-click="sendConfig()" ng-disable="nodeNewConfigForm.$invalid">更新配置</button>
         </div>
     </form>
 </div>

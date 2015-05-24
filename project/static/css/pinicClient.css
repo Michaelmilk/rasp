@@ -95,3 +95,23 @@ tr.warningdevice
         {
             margin: 0 0 0.063em; /* 1px */
         }
+
+.statuserror {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 1px solid #222;
+    background-color: #C02020;
+    position: relative;
+    margin-bottom: -0.1em;
+}
+
+.statusfine {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 1px solid #222;
+    background-color: #20C020;
+    position: relative;
+    margin-bottom: -0.1em;
+}

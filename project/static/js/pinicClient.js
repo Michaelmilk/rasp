@@ -406,7 +406,54 @@
             SHOW_CONFIG: 'SHOW_CONFIG',
             SHOW_CHART: 'SHOW_CHART',
             SHOW_WARNING: 'SHOW_WARNING',
-            REFRESH_TREE: 'REFRESH_TREE'
+            REFRESH_TREE: 'REFRESH_TREE',
+
+            FORWARDER_CONNECT: 'FORWARDER_CONNECT',
+            FORWARDER_DISCONNECT: 'FORWARDER_DISCONNECT',
+            SERVER_CONNECT: 'FORWARDER_CONNECT',
+            SERVER_DISCONNECT: 'FORWARDER_DISCONNECT',
+
+            CANCEL_WARNING: 'CANCEL_WARNING'
+        };
+
+        srv.sayForwarderConnect = function() {
+            $rootScope.$broadcast(srv.const.FORWARDER_CONNECT);
+        };
+
+        srv.onForwarderConnect = function(callback) {
+            $rootScope.$on(srv.const.FORWARDER_CONNECT, callback);
+        };
+
+        srv.sayForwarderDisconnect = function() {
+            $rootScope.$broadcast(srv.const.FORWARDER_DISCONNECT);
+        };
+
+        srv.onForwarderDisconnect = function(callback) {
+            $rootScope.$on(srv.const.FORWARDER_DISCONNECT, callback);
+        };
+
+        srv.sayServerConnect = function() {
+            $rootScope.$broadcast(srv.const.SERVER_CONNECT);
+        };
+
+        srv.onServerConnect = function(callback) {
+            $rootScope.$on(srv.const.SERVER_CONNECT, callback);
+        };
+
+        srv.sayServerDisconnect = function() {
+            $rootScope.$broadcast(srv.const.SERVER_DISCONNECT);
+        };
+
+        srv.onServerDisconnect = function(callback) {
+            $rootScope.$on(srv.const.SERVER_DISCONNECT, callback);
+        };
+
+        srv.sayCancelWarning = function() {
+            $rootScope.$broadcast(srv.const.CANCEL_WARNING);
+        };
+
+        srv.onCancelWarning = function(callback) {
+            $rootScope.$on(srv.const.CANCEL_WARNING, callback);
         };
 
         srv.sayJumpPage = function(toPageNo) {
@@ -970,7 +1017,7 @@
             apiSrv.setServerConfig(self.convertNewConfig(), self.serverId, function(data) {
                 self.isSentSuccess = true;
                 self.sentSuccessMsg = data;
-                self.setCurrentConfig(data);
+                self.setCurrentConfig(data, self.serverId);
                 broadcastSrv.sayRefreshTree();
             }, function(data) {
                 self.isSentError = true;
@@ -1003,10 +1050,7 @@
             sensor_type: '',
             sensor_id: '',
             sensor_desc: '',
-            sensor_config: {},
-            sensor_interval: 2.0,
-            sensors: [],
-            filters: []
+            sensor_config: {}
         };
 
         self.emptyFilter = {
@@ -1074,10 +1118,11 @@
         };
 
         self.sendConfig = function() {
-            apiSrv.setServerConfig(self.convertNewConfig(), self.serverId, function(data) {
+            console.log("S" + self.serverId + " N" + self.nodeId);
+            apiSrv.setNodeConfig(self.convertNewConfig(), self.serverId, self.nodeId, function(data) {
                 self.isSentSuccess = true;
                 self.sentSuccessMsg = data;
-                self.setCurrentConfig(data);
+                self.setCurrentConfig(data, self.serverId, self.nodeId);
                 broadcastSrv.sayRefreshTree();
             }, function(data) {
                 self.isSentError = true;
@@ -1102,6 +1147,20 @@
             self.newConfig.filters.push(angular.copy(self.emptyFilter));
         };
 
+        self.removeSensorFieldFromNewConfig = function(sensor) {
+            var index = self.newConfig.sensors.indexOf(sensor);
+            if (index !== -1) {
+                self.newConfig.sensors.splice(index, 1);
+            }
+        };
+
+        self.removeFilterFieldFromNewConfig = function(filter) {
+            var index = self.newConfig.filters.indexOf(filter);
+            if (index !== -1) {
+                self.newConfig.filters.splice(index, 1);
+            }
+        };
+
         // --- Listener of broadcast
 
         broadcastSrv.onShowConfig(function() {
@@ -1110,6 +1169,44 @@
                 return;
             }
             self.loadConfig(msg.sId, msg.nId);
+        });
+
+    }]);
+
+    app.controller('StatusCtrl', ['broadcastSrv', '$scope', function(broadcastSrv, self) {
+
+        self.forwarderStat = false;
+
+        self.serverStat = false;
+
+        self.warningStat = false;
+
+        self.cancelWarning = function() {
+            broadcastSrv.sayCancelWarning();
+        };
+
+        broadcastSrv.onForwarderConnect(function() {
+            self.forwarderStat = true;
+        });
+
+        broadcastSrv.onForwarderDisconnect(function() {
+            self.forwarderStat = false;
+        });
+
+        broadcastSrv.onServerConnect(function() {
+            self.serverStat = true;
+        });
+
+        broadcastSrv.onServerDisconnect(function() {
+            self.serverStat = false;
+        });
+
+        broadcastSrv.onShowWarning(function() {
+            self.warningStat = true;
+        });
+
+        broadcastSrv.onCancelWarning(function() {
+            self.warningStat = false;
         });
 
     }]);

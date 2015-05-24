@@ -17,8 +17,30 @@
 </head>
 <body class="container" ng-controller="tabController as tab">
 
-<div class="page-header">
-    <h3>Pinic client</h3>
+<div class="page-header clearfix" ng-controller="StatusCtrl as status">
+    <ul class="list-inline">
+        <li>
+            <h2>Pinic client</h2>
+        </li>
+        <li>
+            |
+        </li>
+	    <li>
+            Forwarder连接
+            <div ng-class="{statusfine: forwarderStat, statuserror: !forwarderStat}"></div>
+        </li>
+	    <li>
+            Server连接
+            <div ng-class="{statusfine: serverStat, statuserror: !serverStat}"></div>
+        </li>
+        <li>
+            Server报警
+            <div ng-class="{statuserror: warningStat, statusfine: !warningStat}"></div>
+        </li>
+        <li>
+            <button class="btn btn-xs btn-danger" ng-show="warningStat" ng-click="cancelWarning()">取消警报</button>
+        </li>
+    </ul>
 </div>
 
 <div class="row">

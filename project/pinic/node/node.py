@@ -411,7 +411,6 @@ class SensorThread(threading.Thread):
         self.sensor_id = sensor_config["sensor_id"]
         self.sensor_desc = sensor_config["sensor_desc"]
         self.sensor_config = sensor_config["sensor_config"]
-        self.sensor_interval = sensor_config["sensor_interval"]
         self.server_addr = node.config.server_addr
         self.server_port = node.config.server_port
 
@@ -444,13 +443,6 @@ class SensorThread(threading.Thread):
         request_url = str("http://%s:%d/server/sensordata" % (self.server_addr, self.server_port))
 
         self.sensor.initialize()
-
-        while not self.stop_event.wait(self.sensor_interval):
-            try:
-                pass
-                # removed: auto send sensor value
-            except Exception as e:
-                logging.exception("[SensorThread.run] exception:" + str(e))
 
     def stop(self):
         self.sensor.close()
