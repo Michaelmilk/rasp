@@ -2,209 +2,151 @@
 
 """
 本Python模块含有Server类，即系统中的Server部分。
+这个包是项目的Server部分。
 
 Server在启动时并不知道任何关于Node的信息。每一个Node启动后，
-会自己向Server的/server/regnode注册。
+会自己向Server的/server/regnode注册，并以一定间隔发送心跳请求。
 
-为验证Server当前所知的Node是否存活，Server会间隔一定时间，
-使用NodeMonitorThread向Node的/heartbeat/<node_id>验证。
-连续失败一定次数之后，Server即认为这个Node处于异常状态，
-并放慢验证间隔（<--TODO 待定）。
-
-关于反向代理……
-
-Server启动后，先向Forwarder发出请求，获取可用的ssh端口。
-
-Forwarder记录Server和端口之间的对应关系。
-
-之后使用ssh反向代理： Server --> Forwarder
-
-Server向Forwarder的通信：直接发送给Forwarder的IP
-
-Forwarder向Server的通信：发送给自身的相应端口
-
-模块线程
-========
-
-::
-
-    Main ----------- Main           # 服务器线程
-                |
-                ---- NodeMonitor(s) # Node监视线程，监视其存活
-
-方法流程
-========
-
-::
-
-    On start:
-        1. Load config from default path
-        Start 
-        2. Start bottle
-        3. Reg to forwarder
-        4. get forwarder's ssh port
-        5. open ssh reverse tunnel
-
-    POST /server/regnode
-        parse nodeconfig from post load
-        get origin ip from wsgi
-        save (ip, port, id) to known nodes list
-        start a thread to keep it alive
-
-    POST /server/unregnode
-        parse nodeconfig from post load
-        get origin ip from wsgi
-        find (ip, port, id) from known nodes list
-        if found, remove it
-        stop thread
-
-    GET /server/serverconfig/server_id
-        similiar to node
-
-    POST /server/serverconfig/server_id
-        similiar to node
-
-    GET /server/nodeconfig/server_id/node_id
-        find node_id in known node list
-        if found, curl get /node/nodeconfig/node_id, return that
-
-    POST /server/serverconfig/server_id/node_id
-        find node_id in known node list
-        if found, curl post /node/nodeconfig/node_id, return its response
-
-    POST /server/sensordata
-        curl to forwarder
-
+一段时间没有收到来自某个Node的心跳请求后，该Node将从已知Node列表中被删除。
 """
 
 __author__ = "tgmerge"
 
-
+# 启用gevent环境支持
 from gevent import monkey
 monkey.patch_all()
-import logging
-import threading
+
+# 外部模块
 import grequests
 from requests.exceptions import RequestException
+from bottle import Bottle, request
+
+# 项目内的其他模块
 from pinic.server.serverconfig import ServerConfig
 from pinic.server.serverconfig import parse_from_string as parse_server_config_from_string
 from pinic.util import generate_500
 from pinic.node.nodeconfig import parse_from_string as parse_node_config_from_string
 from pinic.node.nodeconfig import NodeConfig
-from bottle import Bottle, request
+
+# python内置模块
 from time import time
 from json import dumps, loads
+import threading
+import logging
 
+
+# 设置日志等级
 logging.basicConfig(level=logging.DEBUG)
 
 
 class Server(object):
-    """Server"""
+    """
+    本类是项目中的Server服务器。运行指导参见pinic.server.__init__.py的文档
+    """
 
     def __init__(self, server_config):
         """
-        :param ServerConfig server_config: 最初配置
+        :param ServerConfig server_config: 初始化用的Server配置（ServerConfig对象）。
         """
 
-        self.config = None                # Server当前的配置
-        """ :type: ServerConfig """
+        self.config = None                # 类型：ServerConfig，本Server当前的配置
 
-        self.bottle = Bottle()            # 服务器bottle
-        """ :type: Bottle """
+        self.bottle = Bottle()            # 类型：Bottle，是本Server内含的Bottle Web服务器
 
-        self.node_monitor = None          # 定期检查Node的最后存活时间
-        """ :type: NodeMonitor """
+        self.node_monitor = None          # 类型：NodeMonitor，定期检查Node的最后存活时间
 
-        self.forwarder_monitor = None     # 定期向Forwarder确认自身存活
-        """ :type: ForwarderMonitor """
+        self.forwarder_monitor = None     # 类型：ForwarderMonitor，定期向Forwarder确认自身存活
 
-        self.known_nodes = []             # 已知的node
-        """ :type: list of NodeInfo"""
+        self.known_nodes = []             # 类型：list of NodeInfo，已知的node
 
-        self.apply_config(server_config)  # 1. 应用配置，向forwarder注册
-        self.start_bottle()         # 2. 启动bottle
+        # 应用初始化配置
+        self.apply_config(server_config)
 
-    # 行为方法
-    # ========
+        # 进行URL路由，并启动Bottle Web服务器
+        self.start_bottle()
+
+    # 行为抽象方法
+    # ============
 
     def apply_config(self, new_config, load_old_config=False):
         """
-        更新这个Gateway的配置。
-        如果开启新的传感器监视线程时发生了异常，将回滚到旧的配置。
-        如果这个回滚操作也发生了异常，将什么也不做并抛出它。
+        为Server服务器应用新的配置。
 
-        :param ServerConfig new_config: 要载入的新配置
-        :param bool load_old_config: 调用时无需设置。在载入失败时防止无限回滚使用。
+        :param ServerConfig new_config: 要应用的新配置（ServerConfig对象）。
+        :param bool load_old_config: 是否在失败时重新加载旧的配置，默认为False。
         """
         logging.debug("[Server.apply_config] new_config=" + str(new_config) + "load_old_config=" + str(load_old_config))
 
+        # 类型检查
         if not isinstance(new_config, ServerConfig):
             raise TypeError("%s is not a ServerConfig instance" % str(new_config))
 
+        # 备份旧的配置
         old_config = self.config
 
+        # 向Forwarder解除注册
         if self.forwarder_monitor is not None:
             self.forwarder_monitor.stop()
             self.forwarder_monitor.unreg_to_forwarder_destory_tunnel()
 
+        # 停止Node监视线程
         if self.node_monitor is not None:
             self.node_monitor.stop()
 
+        # 将Server的配置设置为新的配置
         self.config = new_config
 
+        # 向Forwarder重新注册
         self.forwarder_monitor = ForwarderMonitor(self)
         self.forwarder_monitor.reg_to_forwarder_establish_tunnel()
         self.forwarder_monitor.start()
 
+        # 启动新的Node监视线程
         self.node_monitor = NodeMonitor(self)
         self.node_monitor.start()
 
-        # 6. 如果新配置的node_host或node_port与旧配置不同，
-        # TODO 执行shel脚本以重启整个应用
+        # 如果需要，重启整个服务器
+        # TODO 由于需求变化，不实现
         if (old_config is not None) and ((new_config.server_port != old_config.server_port) or (new_config.server_host != old_config.server_host)):
             self.restart_bottle()
 
     def start_bottle(self):
         """
-        启动Node的Bottle服务器。
+        进行URL路由，并开启Bottle Web服务器。
         """
+
         logging.debug("[Server.start_bottle] starting bottle, server_id=%s" % self.config.server_id)
 
-        # URL路由，API部分
+        # URL路由
         self.bottle.route("/server/regnode", method="POST", callback=self.post_reg_node)
         self.bottle.route("/server/unregnode", method="POST", callback=self.post_unreg_node)
         self.bottle.route("/server/keepnode/<node_id>", method="GET", callback=self.get_keep_node)
-
         self.bottle.route("/server/serverconfig/<server_id>", method="GET", callback=self.get_server_config)
         self.bottle.route("/server/serverconfig/<server_id>", method="POST", callback=self.post_server_config)
-
         self.bottle.route("/server/nodeconfig/<server_id>/<node_id>", method="GET", callback=self.get_node_config)
         self.bottle.route("/server/nodeconfig/<server_id>/<node_id>", method="POST", callback=self.post_node_config)
-
         self.bottle.route("/server/sensordata/<server_id>/<node_id>/<sensor_id>", method="GET", callback=self.get_sensor_data)
         self.bottle.route("/server/sensordata", method="POST", callback=self.post_sensor_data)
-
         self.bottle.route("/server/knownnodes/<server_id>", method="GET", callback=self.get_known_nodes)
 
+        # 开启Bottle
         self.bottle.run(
             host=self.config.server_host,
             port=self.config.server_port,
             server="gevent"
-        )  # TODO 使用Server时加锁
+        )
 
     def restart_bottle(self):
-        """
-        重启整个bottle。
-        """
         logging.debug("[Server.restart_bottle] restarting bottle")
-        # todo
         pass
 
     def find_node_by_id(self, node_id):
         """
-        按node_id在已知Node列表中查找Node并返回它。找不到则返回None。
+        在Server的已知Node列表里按ID查找一个Node，并返回它（一个NodeInfo对象）。
 
-        :rtype: NodeInfo
+        :param basestring node_id: 要查找的Node ID。
+
+        :rtype NodeInfo:
         """
         for n in self.known_nodes:
             if n.id == node_id:
@@ -212,8 +154,9 @@ class Server(object):
 
     def remove_known_node(self, node_id):
         """
-        按node_id从已知的Node列表中删除一个Node。
-        如果找不到，什么也不做。
+        从Server的已知Node列表里按ID删除一个Node。
+
+        :param basestring node_id: 要删除的Node的ID。
         """
         node_to_remove = self.find_node_by_id(node_id)
         if isinstance(node_to_remove, NodeInfo):
@@ -222,12 +165,13 @@ class Server(object):
 
     def add_known_node(self, node_addr, node_port, node_id, node_desc, node_config):
         """
-        添加一个Node到已知Node列表。如果已经有相同ID的Node存在，则覆盖它/它们。
+        用Node的信息添加一个Node到已知Node列表里。
 
-        :param basestring node_addr: node addr
-        :param int node_port: node port
-        :param basestring node_id: node id
-        :param basestring node_desc: node desc
+        :param basestring node_addr: 要添加的Node的地址
+        :param int node_port: 要添加的Node的端口号
+        :param basestring node_id: 要添加的Node的ID
+        :param basestring node_desc: 要添加的Node的描述
+        :param NodeConfig node_config: 要添加的Node的配置（一个NodeConfig对象）
         """
         logging.debug("[Server.add_known_node] adding node with node_id=%s" % node_id)
         self.remove_known_node(node_id)
@@ -235,8 +179,13 @@ class Server(object):
 
     def refresh_node_alive(self, node_id):
         """
-        刷新一个Node（按node_id查找)的last_active_time为当前时间。
+        刷新已知Node列表中的一个Node的最后存活时间。
+        具体方法是修改对应NodeInfo对象的last_active_time值，设置为调用这个方法的当前时间。
+        如果一个Node长期没有被刷新（30s），将从已知Node列表中被删除。
+
+        :param basestring node_id: 要刷新的Node的ID
         """
+
         node_to_refresh = self.find_node_by_id(node_id)
         if isinstance(node_to_refresh, NodeInfo):
             node_to_refresh.last_active_time = time()
@@ -248,19 +197,21 @@ class Server(object):
 
     def post_reg_node(self):
         """
-        处理POST /server/regnode。
-        如果成功，返回HTTP 200。
-        1. 解析POST内容为node_config
-        2. 获取请求的IP地址、端口、node信息
-        3. 添加到已知node列表
-        4. 返回200
+        处理HTTP URL，参见start_bottle方法的注释。
+
+        本方法处理由Node发送的注册请求（HTTP POST）。
+        请求的正文包含Node的配置（NodeConfig）。
+        收到请求后，本Server在已知的Node列表中添加这个Node。
         """
+
+        # 从请求的POST正文中解析Node的配置（NodeConfig）
         body = request.body.read()
         try:
             node_config = parse_node_config_from_string(body)
         except ValueError as e:
             return generate_500("Error on parsing node config.", e)
 
+        # 添加Node
         node_addr = request.environ.get("REMOTE_ADDR")
         node_port = node_config.node_port
         node_id = node_config.node_id
@@ -270,46 +221,55 @@ class Server(object):
 
     def post_unreg_node(self):
         """
-        处理POST /server/unregnode，
-        如果成功，返回HTTP 200。
-        1. 解析POST内容为node_config
-        2. 获取请求的IP地址、端口、node信息
-        3. 从已知node列表清除node
-        4. 返回200
+        处理HTTP URL，参见start_bottle方法的注释。
+
+        本方法处理由Node发送的解除注册请求（HTTP POST）。
+        请求的正文包含Node的配置（NodeConfig）。
+        收到请求后，本Server在已知的Node列表中删除这个Node。
         """
+
+        # 从请求的POST正文中解析Node的配置（NodeConfig）
         body = request.body.read()
         try:
             node_config = parse_node_config_from_string(body)
         except ValueError as e:
             return generate_500("Error on parsing node config.", e)
 
+        # 从已知Node列表中删除这个Node
         node_id = node_config.node_id
         self.remove_known_node(node_id)
         return
 
     def get_keep_node(self, node_id):
         """
-        处理GET /server/keepnode/<node_id>。
-        如果成功，返回HTTP 200。
-        如果找不到Node之类，返回http 500。
+        处理HTTP URL，参见start_bottle方法的注释。
+
+        本方法处理Node发来的心跳请求。请求的目的是证明Node依然存活，可以连通。
+        如果某个Node长时间没有发送心跳请求（30s），认为它已经无法连接，它将被从Node列表中删除。
+
+        :param node_id: URL中的<node_id>部分，即发送心跳的Node的ID。
         """
+
+        # 在已知列表里查找这个Node
         node = self.find_node_by_id(node_id)
         if node is None:
             return generate_500("Cannot find node with node_id='%s' from this server" % node_id)
 
+        # 刷新Node的最后存活时间
         self.refresh_node_alive(node_id)
         return
 
     def get_server_config(self, server_id):
         """
-        处理GET /server/serverconfig/<server_id>。
-        以Json形式返回Server的当前配置。
-        如果请求错误或出现异常，返回HTTP 500。
-        1. 检查server_id:
-        2. 返回server_config:
+        处理HTTP URL，参见start_bottle方法的注释。
 
-        :param basestring server_id: URL中的<server_id>部分。
+        本方法处理Forwarder发来的请求，要求返回Server的当前配置。
+        方法将在HTTP GET的响应（HTTP 200）中返回Json格式的、本Server的配置。
+
+        :param basestring server_id: URL中的<server_id>部分
         """
+
+        # 检查URL中的server_id是否和自身的ID相符，如不符则返回HTTP 500
         if server_id == self.config.server_id:
             return self.config.get_json_string()
         else:
@@ -317,51 +277,56 @@ class Server(object):
 
     def post_server_config(self, server_id):
         """
-        处理POST /server/serverconfig/<server_id>。
-        以Json形式返回新的Server配置。
-        如果请求错误或出现异常，返回HTTP 500。
-        # 1. 检查server_id:
-        # 2. 解析新的server_config:
-        # 3. 应用新的server_config：
-        # 4. 成功，返回新的配置
+        处理HTTP URL，参见start_bottle方法的注释。
+
+        本方法将处理Forwarder发来的请求（HTTP POST），要求更新Server的当前配置。
+        方法将试图解析POST正文中的新配置，并试图给Server自身应用这个配置。
+        如果中途出现错误，将返回HTTP 500错误，并在响应正文中附上错误的信息和产生的异常。
+        如果没有出现错误，将返回HTTP 200正常响应，并在响应正文中附上更新后的配置，以供检查。
 
         :param basestring server_id: URL中的<server_id>部分。
         """
+
+        # 检查URL中的server_id是否和自身的ID相符
         if server_id != self.config.server_id:
             return generate_500("Cannot find node with server_id='%s'" % server_id)
 
+        # 尝试解析POST正文中的ServerConfig
         try:
             new_config = parse_server_config_from_string(request.body.read())
         except ValueError as e:
             return generate_500("Error on parsing new config.", e)
 
+        # 尝试应用新的配置
         try:
             self.apply_config(new_config)
         except Exception as e:
             return generate_500("CAUTION: Error on applying new config.", e)
 
+        # 返回更新后的配置
         return self.config.get_json_string()
 
     def get_node_config(self, server_id, node_id):
         """
-        处理GET /server/nodeconfig/<server_id>/<node_id>
-        如果成功，返回HTTP 200，内容为node的当前配置。
-        # 1. 检查server_id
-        # 2. 查找node_id
-        # 3. 发送GET /node/nodeconfig/<node_id>
-        # 4. 原样返回上面的发送结果
+        处理HTTP URL，参见start_bottle方法的注释。
+
+        本方法将处理Forwarder发来的请求，要求返回某个Node的当前配置。
+        方法将在已知的Node列表中寻找node_id符合的Node，并发送请求返回它的配置。
 
         :param basestring server_id: URL中的<server_id>部分。
         :param basestring node_id: URL中的<node_id>部分。
         """
 
+        # 检查URL中的server_id是否和自身的ID相符
         if server_id != self.config.server_id:
             return generate_500("Cannot find server with server_id='%s'" % server_id)
 
+        # 在自身已知的Server列表里查找URL中给出的目标Node
         node = self.find_node_by_id(node_id)
         if node is None:
             return generate_500("Cannot find node with node_id='%s' from this server" % node_id)
 
+        # 向那个Node发送请求
         request_url = str("http://%s:%d/node/nodeconfig/%s" % (node.addr, node.port, node.id))
         try:
             greq = grequests.get(request_url)
@@ -369,28 +334,31 @@ class Server(object):
         except RequestException as e:
             return generate_500("Error on curling config from node.", e)
 
+        # 向Forwarder返回结果
         return response.text
 
     def post_node_config(self, server_id, node_id):
         """
-        处理POST /server/nodeconfig/<server_id>/<node_id>
-        如果成功，返回HTTP 200，内容为node的新配置。
-        # 1. 检查server_id
-        # 2. 查找node_id
-        # 3. 发送POST /node/nodeconfig/<node_id>
-        # 4. 原样返回上面的发送结果
+        处理HTTP URL，参见start_bottle方法的注释。
+
+        本方法将处理Forwarder发来的请求（HTTP POST），要求更新某个Node的当前配置。
+        新的配置以Json格式在HTTP POST的正文中。
+        方法将在已知的Node列表中寻找node_id符合的Node，并发送请求更新它的配置。
 
         :param basestring server_id: URL中的<server_id>部分。
         :param basestring node_id: URL中的<node_id>部分。
         """
 
+        # 检查URL中的server_id是否和自身的ID相符
         if server_id != self.config.server_id:
             return generate_500("Cannot find server with server_id='%s'" % server_id)
 
+        # 在自身已知的Server列表里查找URL中给出的目标Node
         node = self.find_node_by_id(node_id)
         if node is None:
             return generate_500("Cannot find node with node_id='%s' from this server" % node_id)
 
+        # 向那个Node发送请求
         request_url = str("http://%s:%d/node/nodeconfig/%s" % (node.addr, node.port, node.id))
         try:
             greq = grequests.post(request_url, data=request.body.read())
@@ -398,24 +366,28 @@ class Server(object):
         except RequestException as e:
             return generate_500("Error on sending config to node.", e)
 
+        # 向Forwarder返回请求的结果
         return response.text
 
     def get_sensor_data(self, server_id, node_id, sensor_id):
         """
-        处理GET /server/sensordata/<server_id>/<node_id>/<sensor_id>
-        如果成功，返回传感器数据（Json格式的SensorData）。
-        # 1. 检查server_id
-        # 2. 查找node_id
-        # 3. 发送GET /node/sensordata/<sensor_id>
-        # 4. 原样返回收到的数据
+        处理HTTP URL，参见start_bottle方法的注释。
+
+        本方法将处理Forwarder发来的请求，要求获得某个传感器的传感器值。
+        方法将把请求转发给相应的Node，并把获得的响应转发回Forwarder。
+        目标传感器的值（SensorData）以Json形式在响应中返回。
         """
+
+        # 检查URL中的server_id是否和自身的ID相符
         if server_id != self.config.server_id:
             return generate_500("Cannot find server with server_id='%s'" % server_id)
 
+        # 在自身已知的Server列表里查找URL中给出的目标Node
         node = self.find_node_by_id(node_id)
         if node is None:
             return generate_500("Cannot find node with node_id='%s' from this server" % node_id)
 
+        # 向那个Node发送请求
         request_url = str("http://%s:%d/node/sensordata/%s/%s" % (node.addr, node.port, node_id, sensor_id))
         try:
             greq = grequests.get(request_url)
@@ -423,13 +395,14 @@ class Server(object):
         except RequestException as e:
             return generate_500("Error on sending config to node.", e)
 
+        # 向Forwarder返回请求的结果
         return response.text
 
     def post_sensor_data(self):
         """
-        处理POST /server/sensordata。
-        如果成功，返回HTTP 200，数据将原样递交给Forwarder。
-        如果失败，返回HTTP 500(todo)。
+        处理POST /server/sensordata，即Node主动发送的传感器值。
+        由于需求变更，本方法现在没有作用。
+        参见Git commit记录：699b6bc7aefe64eab56f5d9727ec341e001d0e4a
         """
         request_url = str("http://%s:%d/forwarder/sensordata" % (self.config.forwarder_addr, self.config.forwarder_port))
         try:
@@ -441,38 +414,47 @@ class Server(object):
 
     def get_known_nodes(self, server_id):
         """
-        处理GET /server/knownnodes。
-        如果成功，返回HTTP 200，以json形式包含当前的known_nodes数据。
-        如果失败，返回HTTP 500。
+        处理HTTP URL，参见start_bottle方法的注释。
+
+        本方法将处理Forwarder发来的请求，返回Server当前已知的Node列表。
+        列表将以Json格式返回，返回的内容是NodeInfo的list。
         """
+
+        # 检查URL中的server_id是否和自身的ID相符
         if server_id != self.config.server_id:
             return generate_500("Cannot find server with server_id='%s'" % server_id)
 
         result = []
 
         for n in self.known_nodes:
+            # 调用每个NodeInfo的get_dict方法，将NodeInfo的信息转换为字典，以供返回
             result.append(n.get_dict())
         return dumps(result)
 
 
 class NodeMonitor(threading.Thread):
     """
-    Node监视线程，定期检查已知Node的最后存活时间，
-    如果超出限制则从已知Node列表中清除Node。
-    如果没有超出，则向它请求所有Sensor是否超过警报阈值。
+    NodeMonitor线程。已经被gevent monkey_patch成为greenlet。
+    以一定间隔检查已知的Node列表，如果发现其中的Node超过一段时间（30秒）没有发送心跳请求，
+    则将其从Server的已知Node列表中删除。
     """
 
     def __init__(self, server):
         """
-        初始化
+        构造方法。
 
-        :param Server server: 开启此线程的Server
+        :param Server server: 开启这个线程的server对象。
         """
+
         super(NodeMonitor, self).__init__()
-        self.server = server
-        self.max_live_interval = 30.0  # 秒，超过这个限制则认为已经无连接
-        self.check_interval = 5.0  # 秒，检查间隔
-        self.stop_event = threading.Event()  # 设置停止事件
+
+        self.server = server  # 开启这个线程的Server对象
+
+        self.max_live_interval = 30.0  # Node不发送心跳请求后的最大存活时间
+
+        self.check_interval = 5.0  # 执行检查的时间间隔
+
+        self.stop_event = threading.Event()  # 本线程的停止事件。使用stop_event.set()可停止本线程，但更推荐使用NodeMonitor.stop()方法
 
     def check_warning(self, node_info):
         """
@@ -496,14 +478,13 @@ class NodeMonitor(threading.Thread):
                     greq = grequests.post(request_url, data=dumps(warning_json_obj))
                     response = greq.send()
             except RequestException as e:
-                # todo handle?
                 logging.debug("[Exception on check_warning]" + str(e))
                 pass
 
     def run(self):
         """
-        检查Server中各个已知Node的最后存活时间是否超出max_live_interval，如果超过，将它从已知的node列表中去除。
-        TODO 加锁
+        线程执行入口方法。
+        间隔check_interval秒进行一次检查，删除太久没有发送心跳请求的Node。
         """
         while not self.stop_event.wait(self.check_interval):
             logging.debug("[NodeMonitor.run] checking %d known nodes." % len(self.server.known_nodes))
@@ -515,13 +496,16 @@ class NodeMonitor(threading.Thread):
             logging.debug("[NodeMonitor.run] done. remain: %d known nodes." % len(self.server.known_nodes))
 
     def stop(self):
+        """
+        停止这个线程。
+        """
+
         self.stop_event.set()
 
 
 class ForwarderMonitor(threading.Thread):
     """
     Forwarder监视线程，定期向Forwarder发送/forwarder/keepsensor/<sensor_id>以表明自己存活。
-    另外，还定期检查ssh隧道是否可用。如果变得不可用，将断开并尝试重新向Forwarder重新注册和连接隧道。
     """
 
     def __init__(self, server):
@@ -529,7 +513,6 @@ class ForwarderMonitor(threading.Thread):
         初始化。
 
         :param Server server: 开启此线程的Server
-        TODO 加锁
         """
         super(ForwarderMonitor, self).__init__()
         # 参数
@@ -604,6 +587,8 @@ class NodeInfo(object):
 
     def __init__(self, addr, port, id, desc, config, last_active_time=None):
         """
+        构造方法。
+
         :param basestring addr: node address
         :param int port: node port
         :param basestring id: node id
@@ -623,7 +608,7 @@ class NodeInfo(object):
 
     def get_dict(self):
         """
-        以dict的形式返回自身的信息。
+        以dict的形式返回自身信息。
 
         :rtype: dict
         """

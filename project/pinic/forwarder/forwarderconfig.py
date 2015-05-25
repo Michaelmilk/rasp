@@ -61,6 +61,7 @@ class ForwarderConfig(object):
 
         :rtype: str
         """
+
         from json import dumps
         return dumps({
             "forwarder_host": self.forwarder_host,

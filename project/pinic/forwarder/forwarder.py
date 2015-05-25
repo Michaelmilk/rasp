@@ -415,7 +415,7 @@ class ServerMonitor(threading.Thread):
         """
         构造方法。
 
-        :param forwarder: 开启这个线程的Forwarder对象。
+        :param Forwarder forwarder: 开启这个线程的Forwarder对象。
         """
 
         super(ServerMonitor, self).__init__()

@@ -83,6 +83,8 @@ Node具有以下HTTP API，全部供Server调用：
 
 * 要运行Node，请先配置Node的配置文件 ``project/config/node.conf`` ，再在项目根目录 `project` 下执行 ``python runnode.py``。
 
+* 要更改Node的初始配置，可以参考nodeconfig.py的文档。
+
 * 要添加一个已有驱动的传感器，请参考 ``nodeconfig.py`` 的文档，修改 ``project/config/node.conf`` 的配置。
 
 * 要编写一个新的传感器驱动，请参考 ``sensor`` 包的文档。

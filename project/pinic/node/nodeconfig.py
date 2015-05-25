@@ -15,7 +15,7 @@ NodeConfig配置类用于解析和封装Node的配置。
         "node_host":"localhost",             # Node自身的服务主机，如果需要让网络中任何主机均可访问，应设置为0.0.0.0
         "node_port":9001,                    # Node的服务端口
         "node_id":"TEST-NODE-1",             # Node的ID，需要在网络中唯一
-        "node_desc":"地区A/地址1",            # Node的位置描述。以路径的方式配置。路径中的节点将在客户端显示为Server的目录节点。
+        "node_desc":"Test node.",            # Node的描述文本
         "server_addr":"127.0.0.1",           # 要连接到的Server的IP地址
         "server_port":9002,                  # 要连接到的Server的端口
         "sensors":[                          # 本机连接到Node的传感器列表
