@@ -69,7 +69,7 @@ class WarningNamespace(BaseNamespace, BroadcastMixin):
 
 class Forwarder(object):
     """
-    本类是项目中的Forwarder服务器。运行指导参见pinic.forwarder的文档。
+    本类是项目中的Forwarder服务器。运行指导参见pinic.forwarder.__init__.py的文档。
     """
 
     def __init__(self, forwarder_config):
@@ -114,7 +114,7 @@ class Forwarder(object):
         if self.server_monitor is not None:
             self.server_monitor.stop()
 
-        # 设置新的配置
+        # 将Forwarder的配置设置为新的配置
         self.config = new_config
 
         # 开启新的Server监视线程
@@ -122,7 +122,7 @@ class Forwarder(object):
         self.server_monitor.start()
 
         # 如果需要，重启整个服务器
-        # TODO 由于需求变化，尚未实现
+        # TODO 由于需求变化，不实现
         if (old_config is not None) and ((new_config.forwarder_port != old_config.forwarder_port) or (new_config.forwarder_host != old_config.forwarder_host)):
             self.restart_bottle()
 
@@ -406,7 +406,8 @@ class Forwarder(object):
 
 class ServerMonitor(threading.Thread):
     """
-    ServerMonitor线程以一定间隔检查已知的Server列表，如果发现其中的Server超过一段时间（30秒）没有发送心跳请求，
+    ServerMonitor线程。已经被gevent monkey_patch成为greenlet。
+    以一定间隔检查已知的Server列表，如果发现其中的Server超过一段时间（30秒）没有发送心跳请求，
     则将其从Forwarder的已知Server列表中删除。
     """
 
