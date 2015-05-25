@@ -1,11 +1,18 @@
 /**
  * Created by tgmerge on 5/9.
  */
+
 'use strict';
 
+
 (function() {
+
+    // AngularJS Rocks!
+
+    // AngularJS应用
     var app = angular.module('pinicClient', []);
 
+    // AngularJS模板指令：设备页
     app.directive('devicesTab', function() {
         return {
             restrict: 'EA',
@@ -13,6 +20,7 @@
         };
     });
 
+    // AngularJS模板指令：设备页-Server详情区域
     app.directive('devicesTabServerDetailSection', function() {
         return {
             restrict: 'EA',
@@ -20,6 +28,7 @@
         };
     });
 
+    // AngularJS模板指令：设备页-Server树形图区域
     app.directive('devicesTabServerTreeSection', function() {
         return {
             restrict: 'EA',
@@ -27,6 +36,7 @@
         };
     });
 
+    // AngularJS模板指令：设备页-报警记录区域
     app.directive('devicesTabWarningSection', function() {
         return {
             restrict: 'EA',
@@ -34,6 +44,7 @@
         };
     });
 
+    // AngularJS模板指令：图表监控页
     app.directive('chartTab', function() {
         return {
             restrict: 'EA',
@@ -41,6 +52,7 @@
         };
     });
 
+    // AngularJS模板指令：Forwarder配置页
     app.directive('forwarderConfigTab', function() {
         return {
             restrict: 'EA',
@@ -48,6 +60,7 @@
         };
     });
 
+    // AngularJS模板指令：Server配置页
     app.directive('serverConfigTab', function() {
         return {
             restrict: 'EA',
@@ -55,6 +68,7 @@
         };
     });
 
+    // AngularJS模板指令：Node配置页
     app.directive('nodeConfigTab', function() {
         return {
             restrict: 'EA',
@@ -62,20 +76,33 @@
         };
     });
 
+    // AngularJS控制器：分页控制
     app.controller('tabController', ['tabSrv', '$scope', function(tabSrv, self) {
+
+        /**
+         * 控制器方法：检查当前标签页是否为指定页
+         * @param checkTab 要检查的页号
+         */
         self.tabIsSet = function(checkTab) {
             return tabSrv.tabIsSet(checkTab);
         };
 
+        /**
+         * 控制器方法：设置当前标签页为制定页
+         * @param activeTab 要设置的页号
+         */
         self.setTab = function(activeTab) {
             tabSrv.setTab(activeTab);
         };
     }]);
 
+    // AngularJS服务：传感器值格式转换（raw value -> formatted value）
     app.service('valueConvertSrv', function() {
         var srv = {};
 
-        // return [convertedValue, unit].
+        /**
+         * 不同类型传感器的转换函数。函数需要返回[convertedValue, unitString]。
+         */
         srv.convertFunctions = {
             'tlc1549': function(value) {
                 // u/v = r/(250+r), v is 5V DC, u is detected voltage
@@ -95,6 +122,12 @@
             }
         };
 
+        /**
+         * 服务方法：转换一个无格式的传感器值为有格式的字符串。
+         * @param type 传感器类型（String）
+         * @param raw_value 要转换的传感器值
+         * @returns String 转换后带格式的传感器值描述字符串。
+         */
         srv.convert = function(type, raw_value) {
             if (type in srv.convertFunctions) {
                 return srv.convertFunctions[type](raw_value).join('');
@@ -103,6 +136,12 @@
             }
         };
 
+        /**
+         * 服务方法：转换一个传感器值，但仅计算转换函数，不附加格式字符串。
+         * @param type 传感器类型（String）
+         * @param raw_value 要转换的传感器值
+         * @returns Number 转换后的传感器值
+         */
         srv.convertWithoutFormat = function(type, raw_value) {
             if (type in srv.convertFunctions) {
                 return srv.convertFunctions[type](raw_value)[0];
@@ -111,65 +150,137 @@
             }
         };
 
+        // 设置为AngularJS服务
         return srv;
     });
 
+    // AngularJS服务：标签页控制
     app.service('tabSrv', function() {
         var srv = {};
 
         srv.tab = 1;
 
+        /**
+         * 服务方法：检查当前标签页是否是指定页
+         * @param checkTab 要检查的标签页号
+         * @returns {boolean}
+         */
         srv.tabIsSet = function(checkTab) {
             return srv.tab === checkTab;
         };
 
+        /**
+         * 服务方法：设置当前标签页为指定页
+         * @param activeTab 要设置的标签页号
+         */
         srv.setTab = function(activeTab) {
             srv.tab = activeTab;
         };
 
+        // 设置为AngularJS服务
         return srv;
     });
 
 
+    // AngularJS服务：API服务
     app.service('apiSrv', ['$http', function($http) {
         var srv = {};
 
+        /**
+         * 服务方法：获取Forwarder配置
+         * @param succ 成功后的回调函数，以下同
+         * @param fail 失败后的回调函数，以下同
+         */
         srv.getForwarderConfig = function(succ, fail) {
             $http.get('/forwarder/forwarderconfig').success(succ).error(fail);
         };
 
+        /**
+         * 服务方法：获取Server的配置
+         * @param sId 要获取的Server的ID
+         * @param succ
+         * @param fail
+         */
         srv.getServerConfig = function(sId, succ, fail) {
             $http.get('/server/serverconfig/' + sId).success(succ).error(fail);
         };
 
+        /**
+         * 服务方法：获取Node的配置
+         * @param sId 要获取的Node上级Server的ID
+         * @param nId 要获取的Node的ID
+         * @param succ
+         * @param fail
+         */
         srv.getNodeConfig = function(sId, nId, succ, fail) {
             $http.get('/server/nodeconfig/' + sId + '/' + nId).success(succ).error(fail);
         };
 
+        /**
+         * 服务方法：更新（更改）Forwarder的配置
+         * @param configJson 新的配置的Json字符串
+         * @param succ
+         * @param fail
+         */
         srv.setForwarderConfig = function(configJson, succ, fail) {
             $http.post('/forwarder/forwarderconfig', configJson).success(succ).error(fail);
         };
 
+        /**
+         * 服务方法：更新Server的配置
+         * @param configJson 新的配置的Json字符串
+         * @param sId 要更新的Server的ID
+         * @param succ
+         * @param fail
+         */
         srv.setServerConfig = function(configJson, sId, succ, fail) {
             $http.post('/server/serverconfig/' + sId, configJson).success(succ).error(fail);
         };
 
+        /**
+         * 服务方法：更新Node的配置
+         * @param configJson 新的配置的Json字符串
+         * @param sId 要更新的Node的上级Server的ID
+         * @param nId 要更新的Node的ID
+         * @param succ
+         * @param fail
+         */
         srv.setNodeConfig = function(configJson, sId, nId, succ, fail) {
             $http.post('/server/nodeconfig/' + sId + '/' + nId, configJson).success(succ).error(fail);
         };
 
+        /**
+         * 服务方法：获取传感器值
+         * @param sId 要获取的传感器所连接的Node的上级Server的ID
+         * @param nId 传感器所连接Node的ID
+         * @param senId 传感器的ID
+         * @param succ
+         * @param fail
+         */
         srv.getSensorData = function(sId, nId, senId, succ, fail) {
             $http.get('/server/sensordata/' + sId + '/' + nId + '/' + senId).success(succ).error(fail);
         };
 
+        /**
+         * 服务方法：获取Server的已知Node列表
+         * @param sId 要获取的Server的ID
+         * @param succ
+         * @param fail
+         */
         srv.getKnownNodesOfServer = function(sId, succ, fail) {
             $http.get('/server/knownnodes/' + sId).success(succ).error(fail);
         };
 
+        /**
+         * 服务方法：获取Forwarder的已知Server列表
+         * @param succ
+         * @param fail
+         */
         srv.getKnownServersOfForwarder = function(succ, fail) {
             $http.get('/forwarder/knownservers').success(succ).error(fail);
         };
 
+        // 设置AngularJS服务
         return srv;
     }]);
 
