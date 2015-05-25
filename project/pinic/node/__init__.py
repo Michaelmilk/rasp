@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 """
-这个Python包中，含有系统的Node部分。
+node
+
+这个包中是项目的Node部分。
 
 Node在自身启动后，会向Server的/server/regnode注册。
 
@@ -59,8 +61,8 @@ Node具有以下HTTP API，全部供Server调用：
     1. 检查URL中的node_id是否和自身的node_id相符；
     #. 返回HTTP 200，内容为空。
 
-类说明
-======
+包中的模块说明
+==============
 
 **node模块**
 
@@ -79,11 +81,11 @@ Node具有以下HTTP API，全部供Server调用：
 如果要……
 ==========
 
-* 要运行Node，请先配置config/node.conf，再运行runnode.py。
+* 要运行Node，请先配置Node的配置文件 ``project/config/node.conf`` ，再在项目根目录 `project` 下执行 ``python runnode.py``。
 
-* 要添加一个已有驱动的传感器，请参考nodeconfig.py的文档，修改node.conf的配置。
+* 要添加一个已有驱动的传感器，请参考 ``nodeconfig.py`` 的文档，修改 ``project/config/node.conf`` 的配置。
 
-* 要编写一个新的传感器驱动，请参考sensor包的文档。
+* 要编写一个新的传感器驱动，请参考 ``sensor`` 包的文档。
 
 """
 
