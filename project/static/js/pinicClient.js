@@ -111,7 +111,7 @@
                 // ->
                 // r = 250raw/(1024-raw)
                 var raw = Number(value);
-                var r = (250.0 * raw) / (1024.01 - raw);
+                var r = ((250.0 * raw) / (1024.01 - raw)).toFixed(2);
                 return [r, 'Ω'];
             },
             'stub': function(value) {
@@ -154,7 +154,9 @@
         return srv;
     });
 
-    // AngularJS服务：标签页控制
+    /**
+     *  AngularJS服务：标签页控制
+     **/
     app.service('tabSrv', function() {
         var srv = {};
 
@@ -181,8 +183,9 @@
         return srv;
     });
 
-
-    // AngularJS服务：API服务
+    /**
+     * AngularJS服务：API服务
+     * **/
     app.service('apiSrv', ['$http', function($http) {
         var srv = {};
 
